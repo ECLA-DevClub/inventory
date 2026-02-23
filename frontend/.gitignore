@@ -1,0 +1,11 @@
+# Node modules
+node_modules/
+
+# Сборка
+build/
+
+# Логи
+*.log
+
+# Файл с секретами
+.env
