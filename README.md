@@ -17,3 +17,50 @@
 Локализацию (русский / кыргызский)
 
 Решение ориентировано на учреждения Центральной Азии с акцентом на доступность, прозрачность и простоту внедрения.
+
+
+
+
+# INVENTORY MVP
+
+## Tech Stack
+
+### Backend
+- Python
+- FastAPI
+- PostgreSQL
+- SQLAlchemy
+
+### Frontend
+- React
+
+---
+
+## Database Structure
+
+### furniture
+- id (PK)
+- name
+- type_id
+- building_id
+- room_id
+- condition_id
+- photo_url
+- created_at
+
+### furniture_type
+- id
+- name
+
+### building
+- id
+- name
+
+### room
+- id
+- name
+- building_id
+
+### condition
+- id
+- name
