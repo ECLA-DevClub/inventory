@@ -1,45 +1,73 @@
-import { useContext, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { InventoryContext } from "../context/InventoryContext";
 import { Link, useNavigate } from "react-router-dom";
+import { getFurniture } from "../api";
 
 function FurnitureList() {
   const { t } = useTranslation();
-  const { furniture, regions, deleteFurniture } = useContext(InventoryContext);
   const navigate = useNavigate();
 
+  const [furniture, setFurniture] = useState([]);
   const [modalPhoto, setModalPhoto] = useState(null);
   const holdTimer = useRef(null);
 
+  const [search, setSearch] = useState("");
+  const [region, setRegion] = useState("");
+  const [org, setOrg] = useState("");
+
+  useEffect(() => {
+    getFurniture()
+      .then((data) => {
+        const mapped = data.map((item) => ({
+          id: item.id,
+          invNumber: `INV-${item.id}`,
+          name: item.name,
+          type: item.type_name,
+          region: "",
+          organization: "",
+          building: item.building_name,
+          room: item.room_name,
+          condition: item.condition_name || "",
+          status: item.condition_name || "Active",
+          photo: item.photo_url ? `http://127.0.0.1:8000${item.photo_url}` : null,
+        }));
+
+        setFurniture(mapped);
+      })
+      .catch((err) => {
+        console.error("Ошибка загрузки мебели:", err);
+      });
+  }, []);
+
   const formatInv = (inv) => {
-    if (!inv) return "";
+    if (!inv) return { first: "", second: "" };
     if (inv.length <= 30) return { first: inv, second: "" };
 
-    // try to split at a hyphen near the middle (prefer last hyphen before 30 chars)
     const splitPos = Math.max(inv.lastIndexOf("-", 30), Math.floor(inv.length / 2));
     const first = inv.slice(0, splitPos);
     const second = inv.slice(splitPos + (inv[splitPos] === "-" ? 1 : 0));
     return { first, second };
   };
 
-  const [search, setSearch] = useState("");
-  const [region, setRegion] = useState("");
-  const [org, setOrg] = useState("");
+  const regions = [];
 
   const orgOptions = useMemo(() => {
     const set = new Set();
-    furniture.forEach((f) => set.add(f.organization));
+    furniture.forEach((f) => {
+      if (f.organization) set.add(f.organization);
+    });
     return Array.from(set).sort();
   }, [furniture]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
+
     return furniture.filter((f) => {
       const matchSearch =
         !s ||
-        String(f.invNumber).toLowerCase().includes(s) ||
-        String(f.name).toLowerCase().includes(s) ||
-        String(f.id).includes(s);
+        String(f.invNumber || "").toLowerCase().includes(s) ||
+        String(f.name || "").toLowerCase().includes(s) ||
+        String(f.id || "").includes(s);
 
       const matchRegion = region ? f.region === region : true;
       const matchOrg = org ? f.organization === org : true;
@@ -50,7 +78,6 @@ function FurnitureList() {
 
   return (
     <div className="animate-fadeIn">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold text-white tracking-tight">
@@ -75,7 +102,6 @@ function FurnitureList() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         <input
           value={search}
@@ -84,20 +110,6 @@ function FurnitureList() {
           className="bg-white/5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 px-4 py-3 rounded-xl text-white placeholder-white/35 outline-none transition hover:bg-white/10"
         />
 
-        <select
-          value={region}
-          onChange={(e) => setRegion(e.target.value)}
-          className="bg-white/5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 px-4 py-3 rounded-xl text-white outline-none transition hover:bg-white/10"
-        >
-          <option value="" className="bg-slate-900">
-            {t("All Regions")}
-          </option>
-          {regions.map((r) => (
-            <option key={r} value={r} className="bg-slate-900">
-              {r}
-            </option>
-          ))}
-        </select>
 
         <select
           value={org}
@@ -115,7 +127,6 @@ function FurnitureList() {
         </select>
       </div>
 
-      {/* Desktop Table */}
       <div className="mt-6 hidden md:block glass rounded-3xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-white/5 border-b border-white/10">
@@ -162,7 +173,9 @@ function FurnitureList() {
                         }}
                       />
                     ) : (
-                      <div className="w-20 h-20 bg-white/5 rounded-md grid place-items-center text-xs text-white/50">{t("No photo")}</div>
+                      <div className="w-20 h-20 bg-white/5 rounded-md grid place-items-center text-xs text-white/50">
+                        {t("No photo")}
+                      </div>
                     )}
 
                     <Link to={`/furniture/${f.id}`} className="hover:underline max-w-[260px]">
@@ -170,14 +183,19 @@ function FurnitureList() {
                         const { first, second } = formatInv(f.invNumber);
                         return (
                           <div className="text-blue-300 text-xs leading-tight">
-                                <div className="truncate max-w-[260px]">{first}</div>
-                                {second ? <div className="text-[0.7rem] text-blue-200 truncate max-w-[260px]">{second}</div> : null}
+                            <div className="truncate max-w-[260px]">{first}</div>
+                            {second ? (
+                              <div className="text-[0.7rem] text-blue-200 truncate max-w-[260px]">
+                                {second}
                               </div>
+                            ) : null}
+                          </div>
                         );
                       })()}
                     </Link>
                   </div>
                 </td>
+
                 <td className="px-6 py-4 text-white">{f.name}</td>
                 <td className="px-6 py-4 text-white/80">{f.type}</td>
                 <td className="px-6 py-4 text-white/80">{f.region}</td>
@@ -201,7 +219,9 @@ function FurnitureList() {
 
                     <button
                       onClick={() => {
-                        if (confirm(`${t("Delete")} ${f.invNumber}?`)) deleteFurniture(f.id);
+                        if (confirm(`${t("Delete")} ${f.invNumber}?`)) {
+                          alert("Удаление подключим следующим шагом");
+                        }
                       }}
                       className="text-sm text-red-400 hover:underline"
                     >
@@ -215,7 +235,7 @@ function FurnitureList() {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-6 py-10 text-center text-white/55"
                 >
                   {t("No results")}
@@ -226,13 +246,16 @@ function FurnitureList() {
         </table>
       </div>
 
-      {/* Mobile Cards */}
       <div className="mt-6 md:hidden flex flex-col gap-4">
         <div className="flex justify-end">
-          <Link to="/furniture/create" className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">
+          <Link
+            to="/furniture/create"
+            className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm"
+          >
             {t("New Asset")}
           </Link>
         </div>
+
         {filtered.map((f) => (
           <Link
             key={f.id}
@@ -240,7 +263,6 @@ function FurnitureList() {
             className="glass p-4 rounded-2xl hover:bg-white/5 transition"
           >
             <div className="flex items-center gap-3">
-
               {f.photo ? (
                 <img
                   src={f.photo}
@@ -271,7 +293,9 @@ function FurnitureList() {
                   }}
                 />
               ) : (
-                <div className="w-32 h-32 bg-white/5 rounded-md grid place-items-center text-xs text-white/50">{t("No photo")}</div>
+                <div className="w-32 h-32 bg-white/5 rounded-md grid place-items-center text-xs text-white/50">
+                  {t("No photo")}
+                </div>
               )}
 
               <div className="text-blue-400 font-semibold max-w-[220px] text-xs leading-tight">
@@ -280,23 +304,23 @@ function FurnitureList() {
                   return (
                     <>
                       <div className="truncate">{first}</div>
-                      {second ? <div className="text-[0.7rem] text-blue-300 truncate">{second}</div> : null}
+                      {second ? (
+                        <div className="text-[0.7rem] text-blue-300 truncate">
+                          {second}
+                        </div>
+                      ) : null}
                     </>
                   );
                 })()}
               </div>
             </div>
 
-            <div className="mt-2 font-medium text-white">
-              {f.name}
-            </div>
+            <div className="mt-2 font-medium text-white">{f.name}</div>
 
-            <div className="mt-1 text-sm text-white/60">
-              {f.type}
-            </div>
+            <div className="mt-1 text-sm text-white/60">{f.type}</div>
 
             <div className="mt-3 text-xs text-white/60">
-              {f.region} • {f.organization}
+              {f.region} {f.region && f.organization ? "•" : ""} {f.organization}
             </div>
 
             <div className="mt-2 text-xs text-white/50">
@@ -323,7 +347,9 @@ function FurnitureList() {
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  if (confirm(`Delete ${f.invNumber}?`)) deleteFurniture(f.id);
+                  if (confirm(`Delete ${f.invNumber}?`)) {
+                    alert("Удаление подключим следующим шагом");
+                  }
                 }}
                 className="text-sm bg-red-500/20 px-3 py-2 rounded-lg text-red-300"
               >
@@ -340,13 +366,27 @@ function FurnitureList() {
         )}
       </div>
 
-      {/* PHOTO MODAL */}
       {modalPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setModalPhoto(null)}>
-          <div className="max-w-[90%] max-h-[90%] p-4" onClick={(e) => e.stopPropagation()}>
-            <img src={modalPhoto} alt="Preview" className="max-w-full max-h-[80vh] rounded-lg object-contain" />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setModalPhoto(null)}
+        >
+          <div
+            className="max-w-[90%] max-h-[90%] p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={modalPhoto}
+              alt="Preview"
+              className="max-w-full max-h-[80vh] rounded-lg object-contain"
+            />
             <div className="mt-3 text-right">
-              <button onClick={() => setModalPhoto(null)} className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20">{t("Cancel")}</button>
+              <button
+                onClick={() => setModalPhoto(null)}
+                className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+              >
+                {t("Cancel")}
+              </button>
             </div>
           </div>
         </div>

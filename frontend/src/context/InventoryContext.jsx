@@ -180,16 +180,57 @@ export const InventoryProvider = ({ children }) => {
     };
   }, []);
 
-  const [store, setStore] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const parsed = saved ? safeParse(saved, null) : null;
-    if (parsed && parsed.version === 3) return parsed;
-    return defaultStore;
-  });
+  const [store, setStore] = useState(defaultStore);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  }, [store]);
+    const fetchData = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/furniture/");
+        if (res.ok) {
+          const data = await res.json();
+          const newFurnitureByTenant = {};
+          const newSeqByTenant = {};
+
+          TENANTS.forEach(t => {
+            newFurnitureByTenant[t.id] = [];
+            newSeqByTenant[t.id] = 0;
+          });
+
+          data.forEach(item => {
+            const tenantId = item.countryCode || "KG";
+            if (!newFurnitureByTenant[tenantId]) {
+              newFurnitureByTenant[tenantId] = [];
+              newSeqByTenant[tenantId] = 0;
+            }
+            newFurnitureByTenant[tenantId].push(item);
+            
+            if (item.invNumber) {
+              const parts = item.invNumber.split("-");
+              const lastPart = parts[parts.length - 1];
+              if (lastPart && !isNaN(parseInt(lastPart))) {
+                const seqNum = parseInt(lastPart);
+                if (seqNum > newSeqByTenant[tenantId]) {
+                  newSeqByTenant[tenantId] = seqNum;
+                }
+              }
+            }
+          });
+
+          setStore(prev => ({
+            ...prev,
+            furnitureByTenant: newFurnitureByTenant,
+            seqByTenant: newSeqByTenant
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch inventory:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   // ===== tenant =====
   const tenants = useMemo(() => TENANTS, []);
@@ -239,7 +280,7 @@ export const InventoryProvider = ({ children }) => {
   };
 
   // ===== CRUD =====
-  const addFurniture = (item) => {
+  const addFurniture = async (item) => {
     const nextSeq = seq + 1;
 
     const tenant = activeTenant;
@@ -298,9 +339,33 @@ export const InventoryProvider = ({ children }) => {
         [activeTenantId]: [...(prev.furnitureByTenant?.[activeTenantId] ?? []), newItem],
       },
     }));
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/furniture/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newItem)
+      });
+      if (res.ok) {
+        const savedItem = await res.json();
+        setStore((prev) => {
+           const list = prev.furnitureByTenant?.[activeTenantId] ?? [];
+           return {
+             ...prev,
+             furnitureByTenant: {
+               ...prev.furnitureByTenant,
+               [activeTenantId]: list.map(x => x.invNumber === savedItem.invNumber ? savedItem : x)
+             }
+           };
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const updateFurniture = (id, updatedItem) => {
+  const updateFurniture = async (id, updatedItem) => {
+    let nextListToSave = [];
     setStore((prev) => {
       const list = prev.furnitureByTenant?.[activeTenantId] ?? [];
       const before = list.find((x) => x.id === id);
@@ -352,15 +417,27 @@ export const InventoryProvider = ({ children }) => {
             }
           : x
       );
+      nextListToSave = nextList;
 
       return {
         ...prev,
         furnitureByTenant: { ...prev.furnitureByTenant, [activeTenantId]: nextList },
       };
     });
+
+    const finalItem = nextListToSave.find(x => x.id === id);
+    if (!finalItem) return;
+
+    try {
+      await fetch(`http://127.0.0.1:8000/furniture/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(finalItem)
+      });
+    } catch (err) { console.error(err); }
   };
 
-  const deleteFurniture = (id) => {
+  const deleteFurniture = async (id) => {
     setStore((prev) => {
       const list = prev.furnitureByTenant?.[activeTenantId] ?? [];
       return {
@@ -371,6 +448,10 @@ export const InventoryProvider = ({ children }) => {
         },
       };
     });
+    
+    try {
+      await fetch(`http://127.0.0.1:8000/furniture/${id}`, { method: "DELETE" });
+    } catch (err) { console.error(err); }
   };
 
   const getFurnitureById = (id) => furniture.find((x) => x.id === Number(id));

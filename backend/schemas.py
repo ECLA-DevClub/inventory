@@ -1,44 +1,117 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-
-# --- СХЕМЫ ДЛЯ МЕБЕЛИ (Inventory) ---
-
-class FurnitureBase(BaseModel):
-    name: str
-
-class FurnitureCreate(FurnitureBase):
-    pass
-
-class FurnitureOut(FurnitureBase):
-    id: int
-    photo_url: Optional[str] = None
-
-    class Config:
-        # Позволяет Pydantic работать с объектами SQLAlchemy (ORM)
-        from_attributes = True
+from datetime import datetime
 
 
-# --- СХЕМЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ (Auth) ---
-
-class UserBase(BaseModel):
+class LoginRequest(BaseModel):
     email: EmailStr
-    role: str = "admin"  # По умолчанию ставим admin
-
-class UserCreate(UserBase):
     password: str
 
-class UserOut(UserBase):
-    id: int
 
-    class Config:
-        from_attributes = True
-
-
-# --- СХЕМЫ ДЛЯ АУТЕНТИФИКАЦИИ (JWT) ---
-
-class Token(BaseModel):
+class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
-class TokenData(BaseModel):
-    email: Optional[str] = None
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    role: str
+
+    class Config:
+        from_attributes = True
+
+
+class FurnitureTypeBase(BaseModel):
+    name: str
+
+
+class FurnitureTypeResponse(FurnitureTypeBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class BuildingBase(BaseModel):
+    name: str
+
+
+class BuildingResponse(BuildingBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class RoomBase(BaseModel):
+    name: str
+    building_id: int
+
+
+class RoomCreate(BaseModel):
+    name: str
+    building_id: int
+
+
+class RoomResponse(RoomBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class ConditionBase(BaseModel):
+    name: str
+
+
+class ConditionResponse(ConditionBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class FurnitureCreate(BaseModel):
+    name: str
+    type_id: int
+    building_id: int
+    room_id: int
+    condition_id: Optional[int] = None
+
+
+class FurnitureUpdate(BaseModel):
+    name: str
+    type_id: int
+    building_id: int
+    room_id: int
+    condition_id: Optional[int] = None
+
+
+class FurnitureResponse(BaseModel):
+    id: int
+    inv_number: str
+    name: str
+
+    type_id: int
+    type_name: str
+
+    building_id: int
+    building_name: str
+
+    room_id: int
+    room_name: str
+
+    condition_id: Optional[int] = None
+    condition_name: Optional[str] = None
+
+    photo_url: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -1,27 +1,43 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useEffect, useState } from "react";
 
 export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+const API_URL = "http://127.0.0.1:8000";
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const saved = localStorage.getItem("isAuthenticated");
-    return saved === "true";
-  });
+export function AuthProvider({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("isAuthenticated", isAuthenticated);
-  }, [isAuthenticated]);
+    const token = localStorage.getItem("access_token");
+    setIsAuthenticated(!!token);
+  }, []);
 
-  const login = (username, password) => {
-    if (username === "admin" && password === "1234") {
-      setIsAuthenticated(true);
-      return true;
+  const login = async (username, password) => {
+    const formData = new URLSearchParams();
+    formData.append("username", username);
+    formData.append("password", password);
+
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formData.toString(),
+    });
+
+    if (!res.ok) {
+      return false;
     }
-    return false;
+
+    const data = await res.json();
+
+    localStorage.setItem("access_token", data.access_token);
+    setIsAuthenticated(true);
+    return true;
   };
 
   const logout = () => {
+    localStorage.removeItem("access_token");
     setIsAuthenticated(false);
   };
 
@@ -30,4 +46,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+}

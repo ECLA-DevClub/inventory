@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm
+from datetime import timedelta
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
+import auth
 import models
 import schemas
-import auth
 from database import get_db
 
 router = APIRouter(
@@ -13,24 +15,21 @@ router = APIRouter(
 )
 
 
-@router.post("/register", response_model=schemas.UserOut)
+@router.post("/register", response_model=schemas.UserResponse)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # 1. Проверка , не занят ли email
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_user:
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Пользователь с таким email уже зарегистрирован"
         )
 
-    # 2. Хешируем пароль
-    hashed_pwd = auth.get_password_hash(user.password)
+    hashed_password = auth.get_password_hash(user.password)
 
-    # 3. Создание запись в базе
     new_user = models.User(
         email=user.email,
-        hashed_password=hashed_pwd,
-        role=user.role
+        hashed_password=hashed_password,
+        role="admin"
     )
     db.add(new_user)
     db.commit()
@@ -38,12 +37,13 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-@router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # 1. Поиск пользователя (в OAuth2PasswordRequestForm логин находится в поле username)
+@router.post("/login", response_model=schemas.TokenResponse)
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
 
-    # 2. Проверка существования и пароля
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,6 +51,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 3. Создание токена
-    access_token = auth.create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.email, "role": user.role},
+        expires_delta=access_token_expires
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
