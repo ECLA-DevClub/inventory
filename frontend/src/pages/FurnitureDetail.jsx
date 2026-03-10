@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { getFurnitureById, deleteFurnitureApi } from "../api";
+import { getFurnitureById, deleteFurniture } from "../api";
 
 function FurnitureDetail() {
   const { t } = useTranslation();
@@ -31,7 +31,7 @@ function FurnitureDetail() {
     if (!ok) return;
 
     try {
-      await deleteFurnitureApi(id);
+      await deleteFurniture(id);
       navigate("/furniture");
     } catch (err) {
       console.error(err);
