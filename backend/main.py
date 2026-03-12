@@ -53,6 +53,7 @@ app.add_middleware(
         "https://inventory-7cb9.vercel.app",
         "https://inventory-7cb9-git-main-sidikovoatillo44-2899s-projects.vercel.app",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
