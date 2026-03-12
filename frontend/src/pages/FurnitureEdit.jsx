@@ -79,8 +79,11 @@ function FurnitureEdit() {
         });
 
         if (itemData.photo_url) {
-          setPreview(`${API_URL}${itemData.photo_url}`);
-        }
+  const photoUrl = itemData.photo_url.startsWith("http")
+    ? itemData.photo_url
+    : `${API_URL}${itemData.photo_url}`;
+  setPreview(photoUrl);
+}
       } catch (err) {
         console.error(err);
         setError("Не удалось загрузить данные мебели");

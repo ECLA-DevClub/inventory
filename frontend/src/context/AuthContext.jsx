@@ -24,25 +24,29 @@ function parseJwt(token) {
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem("access_token") || "");
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const savedToken = localStorage.getItem("access_token");
 
-    if (!token) {
+    if (!savedToken) {
       setIsAuthenticated(false);
       setUser(null);
+      setToken("");
       return;
     }
 
-    const payload = parseJwt(token);
+    const payload = parseJwt(savedToken);
 
     if (!payload) {
       localStorage.removeItem("access_token");
       setIsAuthenticated(false);
       setUser(null);
+      setToken("");
       return;
     }
 
+    setToken(savedToken);
     setIsAuthenticated(true);
     setUser({
       id: payload.sub ? Number(payload.sub) : null,
@@ -55,9 +59,6 @@ export function AuthProvider({ children }) {
     const formData = new URLSearchParams();
     formData.append("username", username);
     formData.append("password", password);
-
-    console.log("API_URL =", API_URL);
-    console.log("LOGIN URL =", `${API_URL}/auth/login`);
 
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
@@ -76,6 +77,7 @@ export function AuthProvider({ children }) {
     const data = await res.json();
 
     localStorage.setItem("access_token", data.access_token);
+    setToken(data.access_token);
 
     const payload = parseJwt(data.access_token);
 
@@ -91,6 +93,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem("access_token");
+    setToken("");
     setIsAuthenticated(false);
     setUser(null);
   };
@@ -103,7 +106,7 @@ export function AuthProvider({ children }) {
         logout,
         user,
         role: user?.role || "viewer",
-        token: localStorage.getItem("access_token"),
+        token,
       }}
     >
       {children}
