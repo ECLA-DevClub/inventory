@@ -47,15 +47,16 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://inventory-7cb9.vercel.app",
+    "https://ecla-devclub.github.io",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://ecla-devclub.github.io",
-        "https://ecla-devclub.github.io/inventory",
-        "https://inventory-7cb9.vercel.app",
-        "https://inventory-7cb9-git-main-sidikovoatillo44-2899s-projects.vercel.app",
-    ],
+    allow_origins=allowed_origins,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -70,10 +71,11 @@ app.include_router(users_router)
 UPLOAD_DIR = "static/item_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
+@app.get("/", tags=["Root"])
 def health_check():
     return {
         "status": "online",
