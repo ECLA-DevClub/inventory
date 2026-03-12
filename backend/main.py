@@ -3,14 +3,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
+import auth
 import models
-from database import engine
+from database import engine, SessionLocal
 from routers import auth_router, inventory, reference, users
 
 models.Base.metadata.create_all(bind=engine)
 
-from database import SessionLocal
-import auth
 
 def seed_default_admin():
     db = SessionLocal()
@@ -33,8 +32,8 @@ def seed_default_admin():
     finally:
         db.close()
 
-seed_default_admin()
 
+seed_default_admin()
 
 app = FastAPI(
     title="Inventory Management System",
@@ -45,16 +44,15 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-origins = [
-    "http://localhost:5173",
-    "https://ecla-devclub.github.io",
-    "https://ecla-devclub.github.io/inventory",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=[
+        "http://localhost:5173",
+        "https://ecla-devclub.github.io",
+        "https://ecla-devclub.github.io/inventory",
+        "https://inventory-7cb9.vercel.app",
+        "https://inventory-7cb9-git-main-sidikovoatillo44-2899s-projects.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
