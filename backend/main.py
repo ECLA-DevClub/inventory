@@ -14,29 +14,47 @@ from routers.users import router as users_router
 models.Base.metadata.create_all(bind=engine)
 
 
-def seed_default_admin():
+def seed_default_users():
     db = SessionLocal()
     try:
-        admin_email = "admin@example.com"
-        admin_password = "1234"
+        users = [
+            {
+                "email": "admin@example.com",
+                "password": "1234",
+                "role": auth.ROLE_ADMIN,
+            },
+            {
+                "email": "manager@example.com",
+                "password": "1234",
+                "role": auth.ROLE_MANAGER,
+            },
+            {
+                "email": "viewer@example.com",
+                "password": "1234",
+                "role": auth.ROLE_VIEWER,
+            },
+        ]
 
-        existing_admin = db.query(models.User).filter(
-            models.User.email == admin_email
-        ).first()
-
-        if not existing_admin:
-            admin_user = models.User(
-                email=admin_email,
-                hashed_password=auth.get_password_hash(admin_password),
-                role=auth.ROLE_ADMIN,
+        for user_data in users:
+            existing_user = (
+                db.query(models.User)
+                .filter(models.User.email == user_data["email"])
+                .first()
             )
-            db.add(admin_user)
-            db.commit()
+
+            if not existing_user:
+                new_user = models.User(
+                    email=user_data["email"],
+                    hashed_password=auth.get_password_hash(user_data["password"]),
+                    role=user_data["role"],
+                )
+                db.add(new_user)
+                db.commit()
     finally:
         db.close()
 
 
-seed_default_admin()
+seed_default_users()
 
 app = FastAPI(
     title="Inventory Management System",
@@ -47,16 +65,15 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-allowed_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://inventory-7cb9.vercel.app",
-    "https://ecla-devclub.github.io",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[
+        "http://localhost:5173",
+        "https://ecla-devclub.github.io",
+        "https://ecla-devclub.github.io/inventory",
+        "https://inventory-7cb9.vercel.app",
+        "https://inventory-7cb9-git-main-sidikovoatillo44-2899s-projects.vercel.app",
+    ],
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -70,12 +87,12 @@ app.include_router(users_router)
 
 UPLOAD_DIR = "static/item_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 os.makedirs("static", exist_ok=True)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/", tags=["Root"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
 def health_check():
     return {
         "status": "online",
