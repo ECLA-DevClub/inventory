@@ -1,4 +1,4 @@
-const API_URL =
+const API_URL = "https://inventory-9ko1.onrender.com";
   import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 /* ---------------- AUTH ---------------- */
@@ -25,13 +25,13 @@ export async function loginUser(username, password) {
 }
 
 export async function registerUser(data) {
-  const res = await fetch(`${API_URL}/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  const res = await fetch(`${API_URL}/auth/login`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+  },
+  body,
+});
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
