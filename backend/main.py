@@ -9,6 +9,33 @@ from routers import auth_router, inventory, reference, users
 
 models.Base.metadata.create_all(bind=engine)
 
+from database import SessionLocal
+import auth
+
+def seed_default_admin():
+    db = SessionLocal()
+    try:
+        admin_email = "admin@example.com"
+        admin_password = "1234"
+
+        existing_admin = db.query(models.User).filter(
+            models.User.email == admin_email
+        ).first()
+
+        if not existing_admin:
+            admin_user = models.User(
+                email=admin_email,
+                hashed_password=auth.get_password_hash(admin_password),
+                role=auth.ROLE_ADMIN,
+            )
+            db.add(admin_user)
+            db.commit()
+    finally:
+        db.close()
+
+seed_default_admin()
+
+
 app = FastAPI(
     title="Inventory Management System",
     description="API для учета мебели с системой аутентификации и загрузкой фото",
