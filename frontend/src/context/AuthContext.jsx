@@ -56,6 +56,9 @@ export function AuthProvider({ children }) {
     formData.append("username", username);
     formData.append("password", password);
 
+    console.log("API_URL =", API_URL);
+    console.log("LOGIN URL =", `${API_URL}/auth/login`);
+
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: {
@@ -65,6 +68,8 @@ export function AuthProvider({ children }) {
     });
 
     if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error("LOGIN ERROR:", err);
       return false;
     }
 
