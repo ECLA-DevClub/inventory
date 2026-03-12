@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { AuthContext } from "../context/AuthContext";
 import {
+  API_URL,
   getFurnitureById,
   updateFurniture,
   uploadPhoto,
@@ -11,12 +13,11 @@ import {
   getRooms,
 } from "../api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
 function FurnitureEdit() {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token } = useContext(AuthContext);
 
   const [item, setItem] = useState(null);
   const [typesList, setTypesList] = useState([]);
@@ -154,6 +155,11 @@ function FurnitureEdit() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!token) {
+      setError("Сессия истекла. Войдите снова.");
+      return;
+    }
+
     if (!formData.name.trim()) {
       setError("Введите название");
       return;
@@ -168,19 +174,23 @@ function FurnitureEdit() {
       setSaving(true);
       setError("");
 
-      await updateFurniture(id, {
-        name: formData.name,
-        type_id: Number(formData.type_id),
-        building_id: Number(formData.building_id),
-        room_id: Number(formData.room_id),
-        condition_id:
-          formData.condition_id === "" ? null : Number(formData.condition_id),
-        price_kgs:
-          formData.price_kgs === "" ? null : Number(formData.price_kgs),
-      });
+      await updateFurniture(
+        id,
+        {
+          name: formData.name,
+          type_id: Number(formData.type_id),
+          building_id: Number(formData.building_id),
+          room_id: Number(formData.room_id),
+          condition_id:
+            formData.condition_id === "" ? null : Number(formData.condition_id),
+          price_kgs:
+            formData.price_kgs === "" ? null : Number(formData.price_kgs),
+        },
+        token
+      );
 
       if (formData.photo) {
-        await uploadPhoto(id, formData.photo);
+        await uploadPhoto(id, formData.photo, token);
       }
 
       navigate("/furniture");
@@ -248,6 +258,12 @@ function FurnitureEdit() {
           </div>
         </div>
 
+        {error && (
+          <div className="relative z-10 mb-6 rounded-[1.25rem] border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
+
         <div className="relative z-10 mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className="mb-2 block text-sm font-medium text-white/70">
@@ -265,12 +281,6 @@ function FurnitureEdit() {
             </div>
           </div>
         </div>
-
-        {error && (
-          <div className="relative z-10 mb-6 rounded-[1.25rem] border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
-            {error}
-          </div>
-        )}
 
         <form
           onSubmit={handleSubmit}

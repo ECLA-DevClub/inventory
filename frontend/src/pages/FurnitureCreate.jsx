@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 import {
   createFurniture,
   uploadPhoto,
@@ -13,6 +14,7 @@ import {
 function FurnitureCreate() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { token } = useContext(AuthContext);
 
   const [typesList, setTypesList] = useState([]);
   const [buildingsList, setBuildingsList] = useState([]);
@@ -147,6 +149,11 @@ function FurnitureCreate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!token) {
+      setError("Сессия истекла. Войдите снова.");
+      return;
+    }
+
     if (!formData.name.trim()) {
       setError("Введите название");
       return;
@@ -161,19 +168,22 @@ function FurnitureCreate() {
       setLoading(true);
       setError("");
 
-      const createdItem = await createFurniture({
-        name: formData.name,
-        type_id: Number(formData.type_id),
-        building_id: Number(formData.building_id),
-        room_id: Number(formData.room_id),
-        condition_id:
-          formData.condition_id === "" ? null : Number(formData.condition_id),
-        price_kgs:
-          formData.price_kgs === "" ? null : Number(formData.price_kgs),
-      });
+      const createdItem = await createFurniture(
+        {
+          name: formData.name,
+          type_id: Number(formData.type_id),
+          building_id: Number(formData.building_id),
+          room_id: Number(formData.room_id),
+          condition_id:
+            formData.condition_id === "" ? null : Number(formData.condition_id),
+          price_kgs:
+            formData.price_kgs === "" ? null : Number(formData.price_kgs),
+        },
+        token
+      );
 
       if (formData.photo) {
-        await uploadPhoto(createdItem.id, formData.photo);
+        await uploadPhoto(createdItem.id, formData.photo, token);
       }
 
       setSuccess(true);
@@ -183,7 +193,7 @@ function FurnitureCreate() {
       }, 1000);
     } catch (err) {
       console.error(err);
-      setError("Не удалось сохранить мебель");
+      setError(err.message || "Не удалось сохранить мебель");
     } finally {
       setLoading(false);
     }
