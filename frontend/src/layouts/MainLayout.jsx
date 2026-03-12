@@ -6,7 +6,7 @@ import { AuthContext } from "../context/AuthContext";
 function MainLayout() {
   const location = useLocation();
   const { logout, role } = useContext(AuthContext);
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const currentLang = i18n.language?.startsWith("ru") ? "ru" : "en";
@@ -49,7 +49,9 @@ function MainLayout() {
             ☰
           </button>
 
-          <h1 className="text-lg font-semibold tracking-tight">Inventory</h1>
+          <h1 className="text-lg font-semibold tracking-tight">
+            {t("Inventory")}
+          </h1>
 
           <div className="w-[52px]" />
         </div>
@@ -66,7 +68,7 @@ function MainLayout() {
             <div>
               <div className="mb-6 flex items-center justify-between">
                 <h1 className="text-xl font-semibold tracking-tight">
-                  Inventory
+                  {t("Inventory")}
                 </h1>
                 <button
                   onClick={() => setOpen(false)}
@@ -82,7 +84,7 @@ function MainLayout() {
                   onClick={() => setOpen(false)}
                   className={navLinkClass("/")}
                 >
-                  Dashboard
+                  {t("Dashboard")}
                 </Link>
 
                 <Link
@@ -90,7 +92,7 @@ function MainLayout() {
                   onClick={() => setOpen(false)}
                   className={navLinkClass("/furniture")}
                 >
-                  Assets
+                  {t("Assets")}
                 </Link>
 
                 {canManageAssets && (
@@ -99,7 +101,7 @@ function MainLayout() {
                     onClick={() => setOpen(false)}
                     className={navLinkClass("/furniture/create")}
                   >
-                    Add Asset
+                    {t("Add Asset")}
                   </Link>
                 )}
 
@@ -144,7 +146,7 @@ function MainLayout() {
               </div>
 
               <button onClick={logout} className="apple-btn w-full text-center">
-                Logout
+                {t("Logout")}
               </button>
             </div>
           </aside>
@@ -159,17 +161,17 @@ function MainLayout() {
                 Inventory System
               </div>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight">
-                Inventory
+                {t("Inventory")}
               </h1>
             </div>
 
             <nav className="flex flex-col gap-2 text-sm">
               <Link to="/" className={navLinkClass("/")}>
-                Dashboard
+                {t("Dashboard")}
               </Link>
 
               <Link to="/furniture" className={navLinkClass("/furniture")}>
-                Assets
+                {t("Assets")}
               </Link>
 
               {canManageAssets && (
@@ -177,7 +179,7 @@ function MainLayout() {
                   to="/furniture/create"
                   className={navLinkClass("/furniture/create")}
                 >
-                  Add Asset
+                  {t("Add Asset")}
                 </Link>
               )}
 
@@ -214,7 +216,7 @@ function MainLayout() {
             </div>
 
             <button onClick={logout} className="apple-btn w-full text-center">
-              Logout
+              {t("Logout")}
             </button>
           </div>
         </aside>
