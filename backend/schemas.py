@@ -18,6 +18,10 @@ class UserCreate(BaseModel):
     password: str
 
 
+class UserRoleUpdate(BaseModel):
+    role: str
+
+
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
@@ -83,6 +87,7 @@ class FurnitureCreate(BaseModel):
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
+    price_kgs: Optional[int] = None
 
 
 class FurnitureUpdate(BaseModel):
@@ -91,6 +96,12 @@ class FurnitureUpdate(BaseModel):
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
+    price_kgs: Optional[int] = None
+
+
+class FurnitureMove(BaseModel):
+    building_id: int
+    room_id: int
 
 
 class FurnitureResponse(BaseModel):
@@ -109,6 +120,8 @@ class FurnitureResponse(BaseModel):
 
     condition_id: Optional[int] = None
     condition_name: Optional[str] = None
+
+    price_kgs: Optional[int] = None
 
     photo_url: Optional[str] = None
     created_at: datetime

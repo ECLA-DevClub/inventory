@@ -1,35 +1,35 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useContext, useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { getFurniture } from "../api";
+import { API_URL, getFurniture } from "../api";
+import { AuthContext } from "../context/AuthContext";
 
 function FurnitureList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { role } = useContext(AuthContext);
 
   const [furniture, setFurniture] = useState([]);
   const [modalPhoto, setModalPhoto] = useState(null);
   const holdTimer = useRef(null);
-
   const [search, setSearch] = useState("");
-  const [region, setRegion] = useState("");
-  const [org, setOrg] = useState("");
+
+  const canManageAssets = role === "admin" || role === "manager";
 
   useEffect(() => {
     getFurniture()
       .then((data) => {
         const mapped = data.map((item) => ({
           id: item.id,
-          invNumber: `INV-${item.id}`,
+          invNumber: item.inv_number ?? `INV-${item.id}`,
           name: item.name,
           type: item.type_name,
-          region: "",
-          organization: "",
           building: item.building_name,
           room: item.room_name,
           condition: item.condition_name || "",
           status: item.condition_name || "Active",
-          photo: item.photo_url ? `http://127.0.0.1:8000${item.photo_url}` : null,
+          priceKgs: item.price_kgs ?? null,
+          photo: item.photo_url ? `${API_URL}${item.photo_url}` : null,
         }));
 
         setFurniture(mapped);
@@ -49,38 +49,34 @@ function FurnitureList() {
     return { first, second };
   };
 
-  const regions = [];
-
-  const orgOptions = useMemo(() => {
-    const set = new Set();
-    furniture.forEach((f) => {
-      if (f.organization) set.add(f.organization);
-    });
-    return Array.from(set).sort();
-  }, [furniture]);
+  const formatPrice = (value) => {
+    if (value === null || value === undefined || value === "") return "—";
+    return `${Number(value).toLocaleString("ru-RU")} KGS`;
+  };
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
 
     return furniture.filter((f) => {
-      const matchSearch =
+      return (
         !s ||
         String(f.invNumber || "").toLowerCase().includes(s) ||
         String(f.name || "").toLowerCase().includes(s) ||
-        String(f.id || "").includes(s);
-
-      const matchRegion = region ? f.region === region : true;
-      const matchOrg = org ? f.organization === org : true;
-
-      return matchSearch && matchRegion && matchOrg;
+        String(f.id || "").includes(s) ||
+        String(f.type || "").toLowerCase().includes(s) ||
+        String(f.building || "").toLowerCase().includes(s) ||
+        String(f.room || "").toLowerCase().includes(s) ||
+        String(f.status || "").toLowerCase().includes(s) ||
+        String(f.priceKgs || "").toLowerCase().includes(s)
+      );
     });
-  }, [furniture, search, region, org]);
+  }, [furniture, search]);
 
   return (
     <div className="animate-fadeIn">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-white tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight text-white">
             {t("Assets")}
           </h1>
           <div className="mt-2 text-sm text-white/55">
@@ -93,52 +89,39 @@ function FurnitureList() {
             {t("Showing")} <span className="text-white">{filtered.length}</span>
           </div>
 
-          <Link
-            to="/furniture/create"
-            className="ml-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm hover:opacity-90"
-          >
-            {t("New Asset")}
-          </Link>
+          {canManageAssets && (
+            <Link
+              to="/furniture/create"
+              className="apple-btn apple-btn-primary"
+            >
+              {t("New Asset")}
+            </Link>
+          )}
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 gap-4">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search: INV-2026..., name, id..."
-          className="bg-white/5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 px-4 py-3 rounded-xl text-white placeholder-white/35 outline-none transition hover:bg-white/10"
+          placeholder="Search: INV-0001, name, type, room, price..."
+          className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
         />
-
-
-        <select
-          value={org}
-          onChange={(e) => setOrg(e.target.value)}
-          className="bg-white/5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 px-4 py-3 rounded-xl text-white outline-none transition hover:bg-white/10"
-        >
-          <option value="" className="bg-slate-900">
-            {t("All Organizations")}
-          </option>
-          {orgOptions.map((o) => (
-            <option key={o} value={o} className="bg-slate-900">
-              {o}
-            </option>
-          ))}
-        </select>
       </div>
 
-      <div className="mt-6 hidden md:block glass rounded-3xl overflow-hidden">
+      <div className="mt-6 hidden overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl md:block">
         <table className="w-full text-sm">
-          <thead className="bg-white/5 border-b border-white/10">
+          <thead className="border-b border-white/10">
             <tr className="text-white/70">
               <th className="px-6 py-4 text-left font-medium">Inv #</th>
               <th className="px-6 py-4 text-left font-medium">{t("Name")}</th>
               <th className="px-6 py-4 text-left font-medium">{t("Type")}</th>
-              <th className="px-6 py-4 text-left font-medium">Region</th>
-              <th className="px-6 py-4 text-left font-medium">Org</th>
+              <th className="px-6 py-4 text-left font-medium">Price</th>
               <th className="px-6 py-4 text-left font-medium">{t("Location")}</th>
               <th className="px-6 py-4 text-left font-medium">{t("Status")}</th>
-              <th className="px-6 py-4 text-left font-medium">{t("Actions")}</th>
+              {canManageAssets && (
+                <th className="px-6 py-4 text-left font-medium">{t("Actions")}</th>
+              )}
             </tr>
           </thead>
 
@@ -146,15 +129,15 @@ function FurnitureList() {
             {filtered.map((f) => (
               <tr
                 key={f.id}
-                className="border-b border-white/5 hover:bg-white/5 transition"
+                className="border-b border-white/5 transition hover:bg-white/10"
               >
-                <td className="px-6 py-4 text-blue-300 whitespace-nowrap">
+                <td className="whitespace-nowrap px-6 py-4 text-blue-300">
                   <div className="flex items-center gap-3">
                     {f.photo ? (
                       <img
                         src={f.photo}
                         alt={f.name || f.invNumber}
-                        className="w-20 h-20 object-cover rounded-md cursor-zoom-in"
+                        className="h-20 w-20 cursor-zoom-in rounded-md object-cover"
                         onClick={() => setModalPhoto(f.photo)}
                         onMouseDown={() => {
                           holdTimer.current = setTimeout(() => setModalPhoto(f.photo), 600);
@@ -173,19 +156,22 @@ function FurnitureList() {
                         }}
                       />
                     ) : (
-                      <div className="w-20 h-20 bg-white/5 rounded-md grid place-items-center text-xs text-white/50">
+                      <div className="grid h-20 w-20 place-items-center rounded-md bg-white/5 text-xs text-white/50">
                         {t("No photo")}
                       </div>
                     )}
 
-                    <Link to={`/furniture/${f.id}`} className="hover:underline max-w-[260px]">
+                    <Link
+                      to={`/furniture/${f.id}`}
+                      className="max-w-[260px] hover:underline"
+                    >
                       {(() => {
                         const { first, second } = formatInv(f.invNumber);
                         return (
-                          <div className="text-blue-300 text-xs leading-tight">
-                            <div className="truncate max-w-[260px]">{first}</div>
+                          <div className="text-xs leading-tight text-blue-300">
+                            <div className="max-w-[260px] truncate">{first}</div>
                             {second ? (
-                              <div className="text-[0.7rem] text-blue-200 truncate max-w-[260px]">
+                              <div className="max-w-[260px] truncate text-[0.7rem] text-blue-200">
                                 {second}
                               </div>
                             ) : null}
@@ -197,45 +183,38 @@ function FurnitureList() {
                 </td>
 
                 <td className="px-6 py-4 text-white">{f.name}</td>
-                <td className="px-6 py-4 text-white/80">{f.type}</td>
-                <td className="px-6 py-4 text-white/80">{f.region}</td>
-                <td className="px-6 py-4 text-white/80">{f.organization}</td>
+                <td className="px-6 py-4 text-white/80">{f.type || "—"}</td>
                 <td className="px-6 py-4 text-white/80">
-                  {f.building}-{f.room}
+                  {formatPrice(f.priceKgs)}
+                </td>
+                <td className="px-6 py-4 text-white/80">
+                  {f.building || "—"} {f.room ? `• ${f.room}` : ""}
                 </td>
                 <td className="px-6 py-4">
-                  <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/80">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/80">
                     {f.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => navigate(`/furniture/${f.id}/edit`)}
-                      className="text-sm text-white/80 hover:underline"
-                    >
-                      {t("Edit")}
-                    </button>
 
-                    <button
-                      onClick={() => {
-                        if (confirm(`${t("Delete")} ${f.invNumber}?`)) {
-                          alert("Удаление подключим следующим шагом");
-                        }
-                      }}
-                      className="text-sm text-red-400 hover:underline"
-                    >
-                      {t("Delete")}
-                    </button>
-                  </div>
-                </td>
+                {canManageAssets && (
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate(`/furniture/${f.id}/edit`)}
+                        className="text-sm text-white/80 hover:underline"
+                      >
+                        {t("Edit")}
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
 
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={canManageAssets ? 7 : 6}
                   className="px-6 py-10 text-center text-white/55"
                 >
                   {t("No results")}
@@ -246,28 +225,30 @@ function FurnitureList() {
         </table>
       </div>
 
-      <div className="mt-6 md:hidden flex flex-col gap-4">
-        <div className="flex justify-end">
-          <Link
-            to="/furniture/create"
-            className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm"
-          >
-            {t("New Asset")}
-          </Link>
-        </div>
+      <div className="mt-6 flex flex-col gap-4 md:hidden">
+        {canManageAssets && (
+          <div className="flex justify-end">
+            <Link
+              to="/furniture/create"
+              className="apple-btn apple-btn-primary text-sm"
+            >
+              {t("New Asset")}
+            </Link>
+          </div>
+        )}
 
         {filtered.map((f) => (
           <Link
             key={f.id}
             to={`/furniture/${f.id}`}
-            className="glass p-4 rounded-2xl hover:bg-white/5 transition"
+            className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl transition hover:bg-white/5"
           >
             <div className="flex items-center gap-3">
               {f.photo ? (
                 <img
                   src={f.photo}
                   alt={f.name || f.invNumber}
-                  className="w-32 h-32 object-cover rounded-md cursor-zoom-in"
+                  className="h-32 w-32 cursor-zoom-in rounded-md object-cover"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -293,74 +274,64 @@ function FurnitureList() {
                   }}
                 />
               ) : (
-                <div className="w-32 h-32 bg-white/5 rounded-md grid place-items-center text-xs text-white/50">
+                <div className="grid h-32 w-32 place-items-center rounded-md bg-white/5 text-xs text-white/50">
                   {t("No photo")}
                 </div>
               )}
 
-              <div className="text-blue-400 font-semibold max-w-[220px] text-xs leading-tight">
-                {(() => {
-                  const { first, second } = formatInv(f.invNumber);
-                  return (
-                    <>
-                      <div className="truncate">{first}</div>
-                      {second ? (
-                        <div className="text-[0.7rem] text-blue-300 truncate">
-                          {second}
-                        </div>
-                      ) : null}
-                    </>
-                  );
-                })()}
+              <div className="min-w-0">
+                <div className="max-w-[220px] text-xs font-semibold leading-tight text-blue-400">
+                  {(() => {
+                    const { first, second } = formatInv(f.invNumber);
+                    return (
+                      <>
+                        <div className="truncate">{first}</div>
+                        {second ? (
+                          <div className="truncate text-[0.7rem] text-blue-300">
+                            {second}
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div className="mt-3 font-medium text-white">{f.name}</div>
+                <div className="mt-1 text-sm text-white/60">{f.type || "—"}</div>
+                <div className="mt-2 text-sm text-yellow-200">
+                  {formatPrice(f.priceKgs)}
+                </div>
               </div>
             </div>
 
-            <div className="mt-2 font-medium text-white">{f.name}</div>
-
-            <div className="mt-1 text-sm text-white/60">{f.type}</div>
-
-            <div className="mt-3 text-xs text-white/60">
-              {f.region} {f.region && f.organization ? "•" : ""} {f.organization}
-            </div>
-
-            <div className="mt-2 text-xs text-white/50">
-              Location: {f.building}-{f.room}
+            <div className="mt-3 text-xs text-white/50">
+              Location: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
             </div>
 
             <div className="mt-2">
-              <span className="px-3 py-1 text-xs rounded-full bg-white/5 border border-white/10">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
                 {f.status}
               </span>
             </div>
 
-            <div className="mt-3 flex gap-3">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/furniture/${f.id}/edit`);
-                }}
-                className="text-sm bg-white/5 px-3 py-2 rounded-lg"
-              >
-                Edit
-              </button>
-
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (confirm(`Delete ${f.invNumber}?`)) {
-                    alert("Удаление подключим следующим шагом");
-                  }
-                }}
-                className="text-sm bg-red-500/20 px-3 py-2 rounded-lg text-red-300"
-              >
-                Delete
-              </button>
-            </div>
+            {canManageAssets && (
+              <div className="mt-3 flex gap-3">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/furniture/${f.id}/edit`);
+                  }}
+                  className="rounded-lg bg-white/5 px-3 py-2 text-sm"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
           </Link>
         ))}
 
         {filtered.length === 0 && (
-          <div className="text-center text-white/55 py-10">
+          <div className="py-10 text-center text-white/55">
             {t("No results")}
           </div>
         )}
@@ -372,18 +343,18 @@ function FurnitureList() {
           onClick={() => setModalPhoto(null)}
         >
           <div
-            className="max-w-[90%] max-h-[90%] p-4"
+            className="max-h-[90%] max-w-[90%] p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={modalPhoto}
               alt="Preview"
-              className="max-w-full max-h-[80vh] rounded-lg object-contain"
+              className="max-h-[80vh] max-w-full rounded-lg object-contain"
             />
             <div className="mt-3 text-right">
               <button
                 onClick={() => setModalPhoto(null)}
-                className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+                className="rounded-lg bg-white/10 px-4 py-2 hover:bg-white/20"
               >
                 {t("Cancel")}
               </button>

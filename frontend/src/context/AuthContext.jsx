@@ -2,14 +2,54 @@ import { createContext, useEffect, useState } from "react";
 
 export const AuthContext = createContext();
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`)
+        .join("")
+    );
+
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error("JWT parse error:", error);
+    return null;
+  }
+}
 
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    setIsAuthenticated(!!token);
+
+    if (!token) {
+      setIsAuthenticated(false);
+      setUser(null);
+      return;
+    }
+
+    const payload = parseJwt(token);
+
+    if (!payload) {
+      localStorage.removeItem("access_token");
+      setIsAuthenticated(false);
+      setUser(null);
+      return;
+    }
+
+    setIsAuthenticated(true);
+    setUser({
+      id: payload.sub ? Number(payload.sub) : null,
+      email: payload.email || "",
+      role: payload.role || "viewer",
+    });
   }, []);
 
   const login = async (username, password) => {
@@ -32,17 +72,35 @@ export function AuthProvider({ children }) {
     const data = await res.json();
 
     localStorage.setItem("access_token", data.access_token);
+
+    const payload = parseJwt(data.access_token);
+
     setIsAuthenticated(true);
+    setUser({
+      id: payload?.sub ? Number(payload.sub) : null,
+      email: payload?.email || "",
+      role: payload?.role || "viewer",
+    });
+
     return true;
   };
 
   const logout = () => {
     localStorage.removeItem("access_token");
     setIsAuthenticated(false);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        login,
+        logout,
+        user,
+        role: user?.role || "viewer",
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

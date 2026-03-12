@@ -29,8 +29,9 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     new_user = models.User(
         email=user.email,
         hashed_password=hashed_password,
-        role="admin"
+        role=auth.ROLE_VIEWER
     )
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -42,7 +43,9 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    user = db.query(models.User).filter(
+        models.User.email == form_data.username
+    ).first()
 
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -53,7 +56,11 @@ def login(
 
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
-        data={"sub": user.email, "role": user.role},
+        data={
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+        },
         expires_delta=access_token_expires
     )
 
