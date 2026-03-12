@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 /* ---------------- AUTH ---------------- */
 
@@ -54,11 +55,12 @@ export async function getFurnitureById(id) {
   return res.json();
 }
 
-export async function createFurniture(data) {
+export async function createFurniture(data, token) {
   const res = await fetch(`${API_URL}/furniture/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(data),
   });
@@ -71,11 +73,12 @@ export async function createFurniture(data) {
   return res.json();
 }
 
-export async function updateFurniture(id, data) {
+export async function updateFurniture(id, data, token) {
   const res = await fetch(`${API_URL}/furniture/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(data),
   });
@@ -88,9 +91,12 @@ export async function updateFurniture(id, data) {
   return res.json();
 }
 
-export async function deleteFurniture(id) {
+export async function deleteFurniture(id, token) {
   const res = await fetch(`${API_URL}/furniture/${id}`, {
     method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
 
   if (!res.ok) {
@@ -101,12 +107,15 @@ export async function deleteFurniture(id) {
   return res.json();
 }
 
-export async function uploadPhoto(id, file) {
+export async function uploadPhoto(id, file, token) {
   const formData = new FormData();
   formData.append("file", file);
 
   const res = await fetch(`${API_URL}/furniture/${id}/photo`, {
     method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: formData,
   });
 
@@ -118,11 +127,12 @@ export async function uploadPhoto(id, file) {
   return res.json();
 }
 
-export async function moveFurniture(id, data) {
+export async function moveFurniture(id, data, token) {
   const res = await fetch(`${API_URL}/furniture/${id}/move`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(data),
   });

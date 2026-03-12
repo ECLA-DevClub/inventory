@@ -1,8 +1,7 @@
 import { createContext, useEffect, useState } from "react";
+import { API_URL } from "../api";
 
 export const AuthContext = createContext();
-
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 function parseJwt(token) {
   try {
@@ -99,6 +98,7 @@ export function AuthProvider({ children }) {
         logout,
         user,
         role: user?.role || "viewer",
+        token: localStorage.getItem("access_token"),
       }}
     >
       {children}
