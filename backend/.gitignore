@@ -1,10 +1,24 @@
 # Виртуальное окружение
 venv/
-__pycache__/
+.venv/
+env/
+_pycache_/
 *.pyc
+
+# База данных
+backend/*.db
+*.db
+
+# Загруженные фото
+backend/static/item_photos/*
+static/item_photos/*
 
 # Логи
 *.log
 
 # Файл с секретами
 .env
+
+# Настройки IDE
+.idea/
+.vscode/
