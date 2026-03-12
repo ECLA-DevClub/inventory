@@ -6,7 +6,10 @@ import os
 import auth
 import models
 from database import engine, SessionLocal
-from routers import auth_router, inventory, reference, users
+from routers.auth_router import router as auth_router
+from routers.inventory import router as inventory_router
+from routers.reference import router as reference_router
+from routers.users import router as users_router
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -59,10 +62,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router.router)
-app.include_router(inventory.router)
-app.include_router(reference.router)
-app.include_router(users.router)
+app.include_router(auth_router)
+app.include_router(inventory_router)
+app.include_router(reference_router)
+app.include_router(users_router)
 
 UPLOAD_DIR = "static/item_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
