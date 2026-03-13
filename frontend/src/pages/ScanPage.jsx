@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { getFurnitureById } from "../api";
 
@@ -20,9 +20,17 @@ function extractFurnitureIdFromQr(text) {
   return null;
 }
 
+const SAME_QR_COOLDOWN_MS = 3000;
+
 function ScanPage() {
   const scannerRef = useRef(null);
   const scannerElementId = "inventory-qr-reader";
+
+  const seenKeysRef = useRef(new Set());
+  const lastScanRef = useRef({
+    rawValue: "",
+    at: 0,
+  });
 
   const [isScannerRunning, setIsScannerRunning] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -32,15 +40,53 @@ function ScanPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [report, setReport] = useState([]);
 
-  const scannedKeys = useMemo(() => {
-    return new Set(report.map((item) => item.uniqueKey));
-  }, [report]);
-
   useEffect(() => {
     return () => {
       stopScanner();
     };
   }, []);
+
+  const playScanFeedback = () => {
+    try {
+      if (navigator.vibrate) {
+        navigator.vibrate(120);
+      }
+
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContextClass) return;
+
+      const audioCtx = new AudioContextClass();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+
+      gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.12,
+        audioCtx.currentTime + 0.01
+      );
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioCtx.currentTime + 0.12
+      );
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.12);
+
+      oscillator.onended = () => {
+        audioCtx.close().catch(() => {});
+      };
+    } catch (err) {
+      console.error("Scan feedback error:", err);
+    }
+  };
 
   const stopScanner = async () => {
     try {
@@ -95,31 +141,59 @@ function ScanPage() {
     }
   };
 
-  const addReportRow = (row) => {
-    if (scannedKeys.has(row.uniqueKey)) {
-      setScanMessage("Этот объект уже был отсканирован.");
-      return;
+  const shouldIgnoreDuplicateRawValue = (rawValue) => {
+    const now = Date.now();
+
+    if (
+      lastScanRef.current.rawValue === rawValue &&
+      now - lastScanRef.current.at < SAME_QR_COOLDOWN_MS
+    ) {
+      return true;
     }
 
+    lastScanRef.current = {
+      rawValue,
+      at: now,
+    };
+
+    return false;
+  };
+
+  const addReportRow = (row) => {
+    if (seenKeysRef.current.has(row.uniqueKey)) {
+      setScanMessage("Этот объект уже был отсканирован.");
+      return false;
+    }
+
+    seenKeysRef.current.add(row.uniqueKey);
     setReport((prev) => [row, ...prev]);
+    return true;
   };
 
   const handleScan = async (rawValue) => {
+    const normalizedValue = rawValue?.trim();
+
+    if (!normalizedValue) return;
     if (isProcessing) return;
+
+    if (shouldIgnoreDuplicateRawValue(normalizedValue)) {
+      return;
+    }
 
     try {
       setIsProcessing(true);
       setScanError("");
       setScanMessage("");
 
-      const furnitureId = extractFurnitureIdFromQr(rawValue);
+      const furnitureId = extractFurnitureIdFromQr(normalizedValue);
 
       if (!furnitureId) {
-        const uniqueKey = `invalid-${rawValue}`;
-        addReportRow({
+        const uniqueKey = `invalid-${normalizedValue}`;
+
+        const added = addReportRow({
           uniqueKey,
           status: "not_found",
-          scannedValue: rawValue,
+          scannedValue: normalizedValue,
           furnitureId: null,
           invNumber: "—",
           name: "QR не распознан",
@@ -127,17 +201,21 @@ function ScanPage() {
           roomName: "—",
           scannedAt: new Date().toLocaleString(),
         });
-        setScanError("QR не содержит корректный furniture id.");
+
+        if (added) {
+          setScanError("QR не содержит корректный furniture id.");
+        }
+
         return;
       }
 
       try {
         const item = await getFurnitureById(furnitureId);
 
-        addReportRow({
+        const added = addReportRow({
           uniqueKey: `found-${item.id}`,
           status: "found",
-          scannedValue: rawValue,
+          scannedValue: normalizedValue,
           furnitureId: item.id,
           invNumber: item.inv_number || `INV-${item.id}`,
           name: item.name || "Без названия",
@@ -146,14 +224,17 @@ function ScanPage() {
           scannedAt: new Date().toLocaleString(),
         });
 
-        setScanMessage(
-          `Найдено: ${item.inv_number || `INV-${item.id}`} — ${item.name}`
-        );
+        if (added) {
+          playScanFeedback();
+          setScanMessage(
+            `Найдено: ${item.inv_number || `INV-${item.id}`} — ${item.name}`
+          );
+        }
       } catch (err) {
-        addReportRow({
+        const added = addReportRow({
           uniqueKey: `missing-${furnitureId}`,
           status: "not_found",
-          scannedValue: rawValue,
+          scannedValue: normalizedValue,
           furnitureId,
           invNumber: `INV-${furnitureId}`,
           name: "Объект не найден",
@@ -162,7 +243,9 @@ function ScanPage() {
           scannedAt: new Date().toLocaleString(),
         });
 
-        setScanError(`Мебель с id ${furnitureId} не найдена.`);
+        if (added) {
+          setScanError(`Мебель с id ${furnitureId} не найдена.`);
+        }
       }
     } finally {
       setIsProcessing(false);
@@ -180,6 +263,11 @@ function ScanPage() {
     setReport([]);
     setScanMessage("");
     setScanError("");
+    seenKeysRef.current = new Set();
+    lastScanRef.current = {
+      rawValue: "",
+      at: 0,
+    };
   };
 
   const foundCount = report.filter((item) => item.status === "found").length;

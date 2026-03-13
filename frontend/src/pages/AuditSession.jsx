@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { getFurnitureById, getBuildings, getRooms } from "../api";
 import jsPDF from "jspdf";
@@ -18,9 +18,17 @@ function extractFurnitureIdFromQr(text) {
   return null;
 }
 
+const SAME_QR_COOLDOWN_MS = 3000;
+
 function AuditSession() {
   const scannerRef = useRef(null);
   const scannerElementId = "inventory-qr-reader";
+
+  const seenKeysRef = useRef(new Set());
+  const lastScanRef = useRef({
+    rawValue: "",
+    at: 0,
+  });
 
   const [buildings, setBuildings] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -36,8 +44,7 @@ function AuditSession() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStartingScanner, setIsStartingScanner] = useState(false);
   const [error, setError] = useState("");
-
-  const scannedKeys = useMemo(() => new Set(report.map((r) => r.key)), [report]);
+  const [scanMessage, setScanMessage] = useState("");
 
   useEffect(() => {
     loadReferences();
@@ -68,18 +75,65 @@ function AuditSession() {
       return;
     }
 
-    const filtered = rooms.filter((r) => Number(r.building_id) === Number(selectedBuilding));
+    const filtered = rooms.filter(
+      (r) => Number(r.building_id) === Number(selectedBuilding)
+    );
     setFilteredRooms(filtered);
 
-    const roomStillExists = filtered.some((r) => Number(r.id) === Number(selectedRoom));
+    const roomStillExists = filtered.some(
+      (r) => Number(r.id) === Number(selectedRoom)
+    );
     if (!roomStillExists) {
       setSelectedRoom(filtered[0]?.id ? String(filtered[0].id) : "");
     }
-  }, [selectedBuilding, rooms]);
+  }, [selectedBuilding, rooms, selectedRoom]);
+
+  const playScanFeedback = () => {
+    try {
+      if (navigator.vibrate) {
+        navigator.vibrate(120);
+      }
+
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContextClass) return;
+
+      const audioCtx = new AudioContextClass();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+
+      gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.12,
+        audioCtx.currentTime + 0.01
+      );
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioCtx.currentTime + 0.12
+      );
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.12);
+
+      oscillator.onended = () => {
+        audioCtx.close().catch(() => {});
+      };
+    } catch (err) {
+      console.error("Scan feedback error:", err);
+    }
+  };
 
   async function startScanner() {
     try {
       setError("");
+      setScanMessage("");
       setIsStartingScanner(true);
 
       if (!scannerRef.current) {
@@ -130,28 +184,66 @@ function AuditSession() {
     }
 
     setError("");
+    setScanMessage("");
     setReport([]);
+    seenKeysRef.current = new Set();
+    lastScanRef.current = { rawValue: "", at: 0 };
+
     setSessionStarted(true);
     await startScanner();
   }
 
+  function shouldIgnoreDuplicateRawValue(rawValue) {
+    const now = Date.now();
+
+    if (
+      lastScanRef.current.rawValue === rawValue &&
+      now - lastScanRef.current.at < SAME_QR_COOLDOWN_MS
+    ) {
+      return true;
+    }
+
+    lastScanRef.current = {
+      rawValue,
+      at: now,
+    };
+
+    return false;
+  }
+
   async function handleScan(rawValue) {
+    const normalizedValue = rawValue?.trim();
+
+    if (!normalizedValue) return;
     if (isProcessing) return;
+
+    if (shouldIgnoreDuplicateRawValue(normalizedValue)) {
+      return;
+    }
 
     setIsProcessing(true);
     setError("");
+    setScanMessage("");
 
-    const id = extractFurnitureIdFromQr(rawValue);
+    const id = extractFurnitureIdFromQr(normalizedValue);
 
     if (!id) {
-      addRow({
-        key: "invalid-" + rawValue,
-        status: "missing",
-        inv: "-",
-        name: "QR не распознан",
-        building: "-",
-        room: "-",
-      });
+      const invalidKey = `invalid-${normalizedValue}`;
+
+      if (!seenKeysRef.current.has(invalidKey)) {
+        addRow({
+          key: invalidKey,
+          status: "missing",
+          inv: "-",
+          name: "QR не распознан",
+          building: "-",
+          room: "-",
+        });
+      } else {
+        setScanMessage("Этот QR уже был обработан.");
+      }
+
+      setError("QR не содержит корректный furniture id.");
       setIsProcessing(false);
       return;
     }
@@ -164,30 +256,62 @@ function AuditSession() {
         status = "wrong";
       }
 
+      const rowKey = `found-${item.id}`;
+
+      if (seenKeysRef.current.has(rowKey)) {
+        setScanMessage(
+          `Объект ${item.inv_number || `INV-${item.id}`} уже был отсканирован в этой сессии.`
+        );
+        setIsProcessing(false);
+        return;
+      }
+
       addRow({
-        key: "found-" + item.id,
+        key: rowKey,
         status,
         inv: item.inv_number || `INV-${item.id}`,
         name: item.name || "Без названия",
         building: item.building_name || "-",
         room: item.room_name || "-",
       });
+
+      playScanFeedback();
+
+      if (status === "ok") {
+        setScanMessage(`OK: ${item.inv_number || `INV-${item.id}`} — ${item.name}`);
+      } else {
+        setScanMessage(
+          `Объект найден, но находится не в выбранной комнате: ${item.inv_number || `INV-${item.id}`}`
+        );
+      }
     } catch {
+      const missingKey = `missing-${id}`;
+
+      if (seenKeysRef.current.has(missingKey)) {
+        setScanMessage(`Объект INV-${id} уже был отмечен как отсутствующий.`);
+        setIsProcessing(false);
+        return;
+      }
+
       addRow({
-        key: "missing-" + id,
+        key: missingKey,
         status: "missing",
         inv: `INV-${id}`,
         name: "Не найдено",
         building: "-",
         room: "-",
       });
+
+      setError(`Мебель с id ${id} не найдена.`);
     }
 
     setIsProcessing(false);
   }
 
   function addRow(row) {
-    if (scannedKeys.has(row.key)) return;
+    if (seenKeysRef.current.has(row.key)) return;
+
+    seenKeysRef.current.add(row.key);
 
     setReport((prev) => [
       {
@@ -199,8 +323,10 @@ function AuditSession() {
   }
 
   function exportPDF() {
-    const building = buildings.find((b) => Number(b.id) === Number(selectedBuilding))?.name || "-";
-    const room = rooms.find((r) => Number(r.id) === Number(selectedRoom))?.name || "-";
+    const building =
+      buildings.find((b) => Number(b.id) === Number(selectedBuilding))?.name || "-";
+    const room =
+      rooms.find((r) => Number(r.id) === Number(selectedRoom))?.name || "-";
 
     const doc = new jsPDF();
 
@@ -235,6 +361,9 @@ function AuditSession() {
   function handleResetReport() {
     setReport([]);
     setError("");
+    setScanMessage("");
+    seenKeysRef.current = new Set();
+    lastScanRef.current = { rawValue: "", at: 0 };
   }
 
   const okCount = report.filter((r) => r.status === "ok").length;
@@ -405,6 +534,12 @@ function AuditSession() {
             </button>
           </div>
         </div>
+
+        {scanMessage && (
+          <div className="relative z-10 mt-6 rounded-[1.25rem] border border-green-400/20 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+            {scanMessage}
+          </div>
+        )}
 
         {error && (
           <div className="relative z-10 mt-6 rounded-[1.25rem] border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
