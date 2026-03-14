@@ -5,10 +5,15 @@ export const AuthContext = createContext();
 
 function parseJwt(token) {
   try {
-    const base64Url = token.split(".")[1];
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    const base64Url = parts[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+
     const jsonPayload = decodeURIComponent(
-      atob(base64)
+      atob(padded)
         .split("")
         .map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`)
         .join("")
@@ -21,10 +26,19 @@ function parseJwt(token) {
   }
 }
 
+function isTokenExpired(token) {
+  const payload = parseJwt(token);
+  if (!payload || !payload.exp) return true;
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  return payload.exp <= nowInSeconds;
+}
+
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("access_token") || "");
+  const [token, setToken] = useState("");
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem("access_token");
@@ -33,6 +47,16 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(false);
       setUser(null);
       setToken("");
+      setAuthReady(true);
+      return;
+    }
+
+    if (isTokenExpired(savedToken)) {
+      localStorage.removeItem("access_token");
+      setIsAuthenticated(false);
+      setUser(null);
+      setToken("");
+      setAuthReady(true);
       return;
     }
 
@@ -43,6 +67,7 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(false);
       setUser(null);
       setToken("");
+      setAuthReady(true);
       return;
     }
 
@@ -53,6 +78,7 @@ export function AuthProvider({ children }) {
       email: payload.email || "",
       role: payload.role || "viewer",
     });
+    setAuthReady(true);
   }, []);
 
   const login = async (username, password) => {
@@ -75,6 +101,14 @@ export function AuthProvider({ children }) {
     }
 
     const data = await res.json();
+
+    if (!data?.access_token || isTokenExpired(data.access_token)) {
+      localStorage.removeItem("access_token");
+      setToken("");
+      setIsAuthenticated(false);
+      setUser(null);
+      return false;
+    }
 
     localStorage.setItem("access_token", data.access_token);
     setToken(data.access_token);
@@ -107,6 +141,7 @@ export function AuthProvider({ children }) {
         user,
         role: user?.role || "viewer",
         token,
+        authReady,
       }}
     >
       {children}
