@@ -23,6 +23,8 @@ const SAME_QR_COOLDOWN_MS = 3000;
 function AuditSession() {
   const scannerRef = useRef(null);
   const scannerElementId = "inventory-qr-reader";
+  const isMountedRef = useRef(true);
+  const scannerActionRef = useRef(false);
 
   const seenKeysRef = useRef(new Set());
   const lastScanRef = useRef({
@@ -47,21 +49,36 @@ function AuditSession() {
   const [scanMessage, setScanMessage] = useState("");
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadReferences();
-  }, []);
 
-  useEffect(() => {
     return () => {
-      stopScanner().catch(() => {});
+      isMountedRef.current = false;
+
+      const scanner = scannerRef.current;
+      scannerRef.current = null;
+
+      if (scanner) {
+        try {
+          const state = scanner.getState?.();
+
+          if (state === 2 || state === 1) {
+            scanner.stop().catch(() => {});
+          }
+
+          scanner.clear().catch(() => {});
+        } catch {
+          // ignore cleanup errors
+        }
+      }
     };
   }, []);
 
   async function loadReferences() {
     try {
-      const b = await getBuildings();
-      const r = await getRooms();
-      setBuildings(b || []);
-      setRooms(r || []);
+      const [b, r] = await Promise.all([getBuildings(), getRooms()]);
+      setBuildings(Array.isArray(b) ? b : []);
+      setRooms(Array.isArray(r) ? r : []);
     } catch (e) {
       console.error(e);
       setError("Не удалось загрузить корпуса и комнаты");
@@ -130,50 +147,117 @@ function AuditSession() {
     }
   };
 
+  async function stopScanner() {
+    if (scannerActionRef.current) return;
+    scannerActionRef.current = true;
+
+    try {
+      const scanner = scannerRef.current;
+
+      if (!scanner) {
+        return;
+      }
+
+      const state = scanner.getState?.();
+
+      if (state === 2 || state === 1) {
+        try {
+          await scanner.stop();
+        } catch {
+          // ignore stop errors
+        }
+      }
+
+      try {
+        await scanner.clear();
+      } catch {
+        // ignore clear errors
+      }
+
+      if (scannerRef.current === scanner) {
+        scannerRef.current = null;
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (isMountedRef.current) {
+        setIsScannerRunning(false);
+        setIsStartingScanner(false);
+      }
+      scannerActionRef.current = false;
+    }
+  }
+
   async function startScanner() {
+    if (scannerActionRef.current || isScannerRunning || isStartingScanner) return;
+    scannerActionRef.current = true;
+
     try {
       setError("");
       setScanMessage("");
       setIsStartingScanner(true);
 
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(scannerElementId);
+      const container = document.getElementById(scannerElementId);
+      if (!container) {
+        setError("Контейнер сканера не найден. Обновите страницу.");
+        return;
       }
 
-      await scannerRef.current.start(
+      if (scannerRef.current) {
+        await stopScanner();
+      }
+
+      const scanner = new Html5Qrcode(scannerElementId);
+      scannerRef.current = scanner;
+
+      await scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
+        {
+          fps: 10,
+          qrbox: { width: 220, height: 220 },
+          aspectRatio: 1,
+        },
         async (decodedText) => {
           await handleScan(decodedText);
         },
         () => {}
       );
 
-      setIsScannerRunning(true);
-    } catch (e) {
-      console.error(e);
-      setError("Не удалось запустить камеру. Проверь доступ к камере и HTTPS/localhost.");
-      setIsScannerRunning(false);
-    } finally {
-      setIsStartingScanner(false);
-    }
-  }
+      if (!isMountedRef.current) {
+        try {
+          await scanner.stop();
+        } catch {}
+        try {
+          await scanner.clear();
+        } catch {}
+        return;
+      }
 
-  async function stopScanner() {
-    try {
-      if (scannerRef.current) {
-        const state = scannerRef.current.getState?.();
-        if (state === 2 || state === 1) {
-          await scannerRef.current.stop().catch(() => {});
-        }
-        await scannerRef.current.clear().catch(() => {});
-        scannerRef.current = null;
+      if (scannerRef.current === scanner) {
+        setIsScannerRunning(true);
       }
     } catch (e) {
       console.error(e);
+
+      const scanner = scannerRef.current;
+      if (scanner) {
+        try {
+          await scanner.clear();
+        } catch {}
+      }
+      scannerRef.current = null;
+
+      if (isMountedRef.current) {
+        setError(
+          "Не удалось запустить камеру. Проверь доступ к камере и HTTPS/localhost."
+        );
+        setIsScannerRunning(false);
+      }
     } finally {
-      setIsScannerRunning(false);
-      setIsStartingScanner(false);
+      if (isMountedRef.current) {
+        setIsStartingScanner(false);
+      }
+      scannerActionRef.current = false;
     }
   }
 
@@ -190,7 +274,10 @@ function AuditSession() {
     lastScanRef.current = { rawValue: "", at: 0 };
 
     setSessionStarted(true);
-    await startScanner();
+
+    setTimeout(() => {
+      startScanner();
+    }, 0);
   }
 
   function shouldIgnoreDuplicateRawValue(rawValue) {
@@ -278,7 +365,9 @@ function AuditSession() {
       playScanFeedback();
 
       if (status === "ok") {
-        setScanMessage(`OK: ${item.inv_number || `INV-${item.id}`} — ${item.name}`);
+        setScanMessage(
+          `OK: ${item.inv_number || `INV-${item.id}`} — ${item.name}`
+        );
       } else {
         setScanMessage(
           `Объект найден, но находится не в выбранной комнате: ${item.inv_number || `INV-${item.id}`}`
@@ -495,9 +584,9 @@ function AuditSession() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
               Текущая сессия проверяет мебель для комнаты{" "}
-              <span className="text-white font-medium">{selectedRoomName}</span>{" "}
+              <span className="font-medium text-white">{selectedRoomName}</span>{" "}
               в корпусе{" "}
-              <span className="text-white font-medium">{selectedBuildingName}</span>.
+              <span className="font-medium text-white">{selectedBuildingName}</span>.
             </p>
           </div>
 

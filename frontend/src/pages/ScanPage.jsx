@@ -25,6 +25,8 @@ const SAME_QR_COOLDOWN_MS = 3000;
 function ScanPage() {
   const scannerRef = useRef(null);
   const scannerElementId = "inventory-qr-reader";
+  const isMountedRef = useRef(true);
+  const scannerActionRef = useRef(false);
 
   const seenKeysRef = useRef(new Set());
   const lastScanRef = useRef({
@@ -41,8 +43,27 @@ function ScanPage() {
   const [report, setReport] = useState([]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     return () => {
-      stopScanner();
+      isMountedRef.current = false;
+
+      const scanner = scannerRef.current;
+      scannerRef.current = null;
+
+      if (scanner) {
+        try {
+          const state = scanner.getState?.();
+
+          if (state === 2 || state === 1) {
+            scanner.stop().catch(() => {});
+          }
+
+          scanner.clear().catch(() => {});
+        } catch {
+          // ignore cleanup errors on unmount
+        }
+      }
     };
   }, []);
 
@@ -89,39 +110,74 @@ function ScanPage() {
   };
 
   const stopScanner = async () => {
+    if (scannerActionRef.current) return;
+    scannerActionRef.current = true;
+
     try {
-      if (scannerRef.current) {
-        const state = scannerRef.current.getState?.();
-        if (state === 2 || state === 1) {
-          await scannerRef.current.stop().catch(() => {});
+      const scanner = scannerRef.current;
+
+      if (!scanner) {
+        return;
+      }
+
+      const state = scanner.getState?.();
+
+      if (state === 2 || state === 1) {
+        try {
+          await scanner.stop();
+        } catch {
+          // ignore stop errors when scanner is already stopping/stopped
         }
-        await scannerRef.current.clear().catch(() => {});
+      }
+
+      try {
+        await scanner.clear();
+      } catch {
+        // ignore clear errors
+      }
+
+      if (scannerRef.current === scanner) {
         scannerRef.current = null;
       }
     } catch (err) {
       console.error(err);
     } finally {
-      setIsScannerRunning(false);
-      setIsStarting(false);
+      if (isMountedRef.current) {
+        setIsScannerRunning(false);
+        setIsStarting(false);
+      }
+      scannerActionRef.current = false;
     }
   };
 
   const startScanner = async () => {
+    if (scannerActionRef.current || isScannerRunning || isStarting) return;
+    scannerActionRef.current = true;
+
     try {
       setScanError("");
       setScanMessage("");
       setIsStarting(true);
 
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(scannerElementId);
+      const container = document.getElementById(scannerElementId);
+      if (!container) {
+        setScanError("Контейнер сканера не найден. Обновите страницу.");
+        return;
       }
 
-      await scannerRef.current.start(
+      if (scannerRef.current) {
+        await stopScanner();
+      }
+
+      const scanner = new Html5Qrcode(scannerElementId);
+      scannerRef.current = scanner;
+
+      await scanner.start(
         { facingMode: "environment" },
         {
           fps: 10,
           qrbox: { width: 220, height: 220 },
-          aspectRatio: 1.0,
+          aspectRatio: 1,
         },
         async (decodedText) => {
           await handleScan(decodedText);
@@ -129,15 +185,41 @@ function ScanPage() {
         () => {}
       );
 
-      setIsScannerRunning(true);
+      if (!isMountedRef.current) {
+        try {
+          await scanner.stop();
+        } catch {}
+        try {
+          await scanner.clear();
+        } catch {}
+        return;
+      }
+
+      if (scannerRef.current === scanner) {
+        setIsScannerRunning(true);
+      }
     } catch (err) {
       console.error(err);
-      setScanError(
-        "Не удалось запустить камеру. Проверь доступ к камере и HTTPS/localhost."
-      );
-      setIsScannerRunning(false);
+
+      const scanner = scannerRef.current;
+      if (scanner) {
+        try {
+          await scanner.clear();
+        } catch {}
+      }
+      scannerRef.current = null;
+
+      if (isMountedRef.current) {
+        setScanError(
+          "Не удалось запустить камеру. Проверь доступ к камере и HTTPS/localhost."
+        );
+        setIsScannerRunning(false);
+      }
     } finally {
-      setIsStarting(false);
+      if (isMountedRef.current) {
+        setIsStarting(false);
+      }
+      scannerActionRef.current = false;
     }
   };
 
@@ -230,7 +312,7 @@ function ScanPage() {
             `Найдено: ${item.inv_number || `INV-${item.id}`} — ${item.name}`
           );
         }
-      } catch (err) {
+      } catch {
         const added = addReportRow({
           uniqueKey: `missing-${furnitureId}`,
           status: "not_found",
