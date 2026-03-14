@@ -36,6 +36,7 @@ function FurnitureCreate() {
 
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -104,8 +105,20 @@ function FurnitureCreate() {
     }
   }, [formData.building_id, filteredRooms, formData.room_id]);
 
+  const clearFieldError = (name) => {
+    setFieldErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    setError("");
+    clearFieldError(name);
 
     if (name === "building_id") {
       setFormData((prev) => ({
@@ -132,21 +145,107 @@ function FurnitureCreate() {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0];
+    setError("");
+    clearFieldError("photo");
+
     if (!file) return;
 
     if (!["image/jpeg", "image/png"].includes(file.type)) {
-      setError("Разрешены только JPG и PNG");
+      setFieldErrors((prev) => ({
+        ...prev,
+        photo: "Разрешены только JPG и PNG",
+      }));
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError("Максимальный размер файла 5 MB");
+      setFieldErrors((prev) => ({
+        ...prev,
+        photo: "Максимальный размер файла 5 MB",
+      }));
       return;
     }
 
     setFormData((prev) => ({ ...prev, photo: file }));
     setPreview(URL.createObjectURL(file));
-    setError("");
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.name.trim()) {
+      errors.name = "Введите название";
+    }
+
+    if (!formData.type_id) {
+      errors.type_id = "Выберите тип";
+    }
+
+    if (!formData.building_id) {
+      errors.building_id = "Выберите корпус";
+    }
+
+    if (!formData.room_id) {
+      errors.room_id = "Выберите комнату";
+    }
+
+    if (
+      formData.purchase_date &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(formData.purchase_date)
+    ) {
+      errors.purchase_date = "Дата должна быть в формате YYYY-MM-DD";
+    }
+
+    if (
+      formData.price_kgs !== "" &&
+      (!/^\d+$/.test(formData.price_kgs) || Number(formData.price_kgs) < 0)
+    ) {
+      errors.price_kgs = "Цена должна быть положительным числом";
+    }
+
+    return errors;
+  };
+
+  const mapBackendErrorToField = (message) => {
+    const lower = String(message || "").toLowerCase();
+
+    if (lower.includes("name")) {
+      return { name: "Проверьте поле Название" };
+    }
+
+    if (lower.includes("type_id")) {
+      return { type_id: "Проверьте поле Тип" };
+    }
+
+    if (lower.includes("building_id")) {
+      return { building_id: "Проверьте поле Корпус" };
+    }
+
+    if (lower.includes("room_id")) {
+      return { room_id: "Проверьте поле Комната" };
+    }
+
+    if (lower.includes("condition_id")) {
+      return { condition_id: "Проверьте поле Состояние" };
+    }
+
+    if (lower.includes("purchase_date") || lower.includes("date")) {
+      return { purchase_date: "Проверьте дату. Нужен формат YYYY-MM-DD" };
+    }
+
+    if (lower.includes("price_kgs") || lower.includes("price")) {
+      return { price_kgs: "Проверьте поле Цена" };
+    }
+
+    if (lower.includes("manufacturer")) {
+      return { manufacturer: "Проверьте поле Производитель" };
+    }
+
+    if (lower.includes("model")) {
+      return { model: "Проверьте поле Модель" };
+    }
+
+    return null;
   };
 
   const handleSubmit = async (e) => {
@@ -157,19 +256,18 @@ function FurnitureCreate() {
       return;
     }
 
-    if (!formData.name.trim()) {
-      setError("Введите название");
-      return;
-    }
+    const validationErrors = validateForm();
 
-    if (!formData.type_id || !formData.building_id || !formData.room_id) {
-      setError("Заполните тип, корпус и комнату");
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setError("Пожалуйста, исправьте ошибки в форме");
       return;
     }
 
     try {
       setLoading(true);
       setError("");
+      setFieldErrors({});
 
       const createdItem = await createFurniture(
         {
@@ -199,17 +297,32 @@ function FurnitureCreate() {
       }, 1000);
     } catch (err) {
       console.error(err);
+
+      const backendFieldError = mapBackendErrorToField(err.message);
+      if (backendFieldError) {
+        setFieldErrors(backendFieldError);
+      }
+
       setError(err.message || "Не удалось сохранить мебель");
     } finally {
       setLoading(false);
     }
   };
 
-  const fieldClass =
-    "w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20";
+  const baseFieldClass =
+    "w-full rounded-[28px] border bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:bg-white/10 focus:ring-2";
 
-  const selectClass =
-    "w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-white outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20";
+  const getFieldClass = (fieldName) =>
+    `${baseFieldClass} ${
+      fieldErrors[fieldName]
+        ? "border-red-400/40 focus:border-red-400/50 focus:ring-red-400/20"
+        : "border-white/10 focus:border-blue-400/40 focus:ring-blue-400/20"
+    }`;
+
+  const renderFieldError = (fieldName) =>
+    fieldErrors[fieldName] ? (
+      <div className="mt-2 text-sm text-red-300">{fieldErrors[fieldName]}</div>
+    ) : null;
 
   if (pageLoading) {
     return (
@@ -262,8 +375,9 @@ function FurnitureCreate() {
               placeholder="Например: Стол преподавателя"
               value={formData.name}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("name")}
             />
+            {renderFieldError("name")}
           </div>
 
           <div className="space-y-2">
@@ -274,7 +388,7 @@ function FurnitureCreate() {
               name="type_id"
               value={formData.type_id}
               onChange={handleChange}
-              className={selectClass}
+              className={getFieldClass("type_id")}
             >
               <option value="" className="bg-slate-900">
                 Выберите тип
@@ -285,6 +399,7 @@ function FurnitureCreate() {
                 </option>
               ))}
             </select>
+            {renderFieldError("type_id")}
           </div>
 
           <div className="space-y-2">
@@ -297,8 +412,9 @@ function FurnitureCreate() {
               placeholder="Например: Office Pro 120"
               value={formData.model}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("model")}
             />
+            {renderFieldError("model")}
           </div>
 
           <div className="space-y-2">
@@ -311,8 +427,9 @@ function FurnitureCreate() {
               placeholder="Например: IKEA"
               value={formData.manufacturer}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("manufacturer")}
             />
+            {renderFieldError("manufacturer")}
           </div>
 
           <div className="space-y-2">
@@ -324,8 +441,9 @@ function FurnitureCreate() {
               name="purchase_date"
               value={formData.purchase_date}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("purchase_date")}
             />
+            {renderFieldError("purchase_date")}
           </div>
 
           <div className="space-y-2">
@@ -338,8 +456,9 @@ function FurnitureCreate() {
               placeholder="Например: 4500"
               value={formData.price_kgs}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("price_kgs")}
             />
+            {renderFieldError("price_kgs")}
           </div>
 
           <div className="space-y-2">
@@ -350,7 +469,7 @@ function FurnitureCreate() {
               name="building_id"
               value={formData.building_id}
               onChange={handleChange}
-              className={selectClass}
+              className={getFieldClass("building_id")}
             >
               <option value="" className="bg-slate-900">
                 Выберите корпус
@@ -361,6 +480,7 @@ function FurnitureCreate() {
                 </option>
               ))}
             </select>
+            {renderFieldError("building_id")}
           </div>
 
           <div className="space-y-2">
@@ -371,7 +491,7 @@ function FurnitureCreate() {
               name="room_id"
               value={formData.room_id}
               onChange={handleChange}
-              className={selectClass}
+              className={getFieldClass("room_id")}
             >
               <option value="" className="bg-slate-900">
                 Выберите комнату
@@ -382,6 +502,7 @@ function FurnitureCreate() {
                 </option>
               ))}
             </select>
+            {renderFieldError("room_id")}
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -392,7 +513,7 @@ function FurnitureCreate() {
               name="condition_id"
               value={formData.condition_id}
               onChange={handleChange}
-              className={selectClass}
+              className={getFieldClass("condition_id")}
             >
               <option value="" className="bg-slate-900">
                 Без состояния
@@ -403,6 +524,7 @@ function FurnitureCreate() {
                 </option>
               ))}
             </select>
+            {renderFieldError("condition_id")}
           </div>
 
           <div className="md:col-span-2">
@@ -426,8 +548,9 @@ function FurnitureCreate() {
                 type="file"
                 accept="image/jpeg, image/png"
                 onChange={handlePhotoChange}
-                className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-sm text-white/70 outline-none file:mr-4 file:rounded-full file:border-0 file:bg-blue-500/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-100 hover:bg-white/10"
+                className={getFieldClass("photo")}
               />
+              {renderFieldError("photo")}
 
               {preview && (
                 <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center">

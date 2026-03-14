@@ -3,9 +3,43 @@ const API_URL =
 
 /* ---------------- HELPERS ---------------- */
 
+function normalizeErrorDetail(detail) {
+  if (!detail) return null;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+
+        const field = Array.isArray(item?.loc)
+          ? item.loc.filter((part) => part !== "body").join(".")
+          : "";
+
+        const message = item?.msg || "Invalid value";
+        return field ? `${field}: ${message}` : message;
+      })
+      .join(" | ");
+  }
+
+  if (typeof detail === "object") {
+    return JSON.stringify(detail);
+  }
+
+  return null;
+}
+
 async function parseError(res, fallbackMessage) {
   const err = await res.json().catch(() => ({}));
-  throw new Error(err.detail || fallbackMessage);
+  const normalized =
+    normalizeErrorDetail(err?.detail) ||
+    err?.message ||
+    fallbackMessage;
+
+  throw new Error(normalized);
 }
 
 export function resolveAssetUrl(path) {
