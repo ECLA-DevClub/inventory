@@ -8,7 +8,6 @@ import auth
 import models
 from database import engine, SessionLocal
 from routers.auth_router import router as auth_router
-from routers.inventory import router as inventory_router
 from routers.reference import router as reference_router
 from routers.users import router as users_router
 
