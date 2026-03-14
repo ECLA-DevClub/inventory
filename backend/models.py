@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from database import Base
 
 
@@ -71,8 +72,6 @@ class Furniture(Base):
     price_kgs = Column(Integer, nullable=True)
     photo_url = Column(String, nullable=True)
 
-    # Важно: default=utc_now нужен для старой SQLite базы,
-    # server_default=func.now() нужен как fallback на стороне БД.
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -80,16 +79,38 @@ class Furniture(Base):
         server_default=func.now(),
     )
 
-    type_id = Column(Integer, ForeignKey("furniture_type.id", ondelete="SET NULL"), nullable=True)
-    building_id = Column(Integer, ForeignKey("building.id", ondelete="SET NULL"), nullable=True)
-    room_id = Column(Integer, ForeignKey("room.id", ondelete="SET NULL"), nullable=True)
-    condition_id = Column(Integer, ForeignKey("condition.id", ondelete="SET NULL"), nullable=True)
+    type_id = Column(
+        Integer,
+        ForeignKey("furniture_type.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    building_id = Column(
+        Integer,
+        ForeignKey("building.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    room_id = Column(
+        Integer,
+        ForeignKey("room.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    condition_id = Column(
+        Integer,
+        ForeignKey("condition.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     furniture_type = relationship("FurnitureType", back_populates="furniture")
     building = relationship("Building", back_populates="furniture")
     room = relationship("Room", back_populates="furniture")
     condition = relationship("Condition", back_populates="furniture")
-    history = relationship("FurnitureHistory", back_populates="furniture")
+
+    history = relationship(
+        "FurnitureHistory",
+        back_populates="furniture",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class FurnitureHistory(Base):
