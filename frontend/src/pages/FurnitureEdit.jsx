@@ -31,6 +31,9 @@ function FurnitureEdit() {
     building_id: "",
     room_id: "",
     condition_id: "",
+    model: "",
+    manufacturer: "",
+    purchase_date: "",
     price_kgs: "",
     photo: null,
   });
@@ -78,6 +81,9 @@ function FurnitureEdit() {
           building_id: itemData?.building_id || "",
           room_id: itemData?.room_id || "",
           condition_id: itemData?.condition_id ?? "",
+          model: itemData?.model || "",
+          manufacturer: itemData?.manufacturer || "",
+          purchase_date: itemData?.purchase_date || "",
           price_kgs:
             itemData?.price_kgs === null || itemData?.price_kgs === undefined
               ? ""
@@ -201,6 +207,9 @@ function FurnitureEdit() {
           room_id: Number(formData.room_id),
           condition_id:
             formData.condition_id === "" ? null : Number(formData.condition_id),
+          model: formData.model.trim() || null,
+          manufacturer: formData.manufacturer.trim() || null,
+          purchase_date: formData.purchase_date || null,
           price_kgs:
             formData.price_kgs === "" ? null : Number(formData.price_kgs),
         },
@@ -262,8 +271,8 @@ function FurnitureEdit() {
                 {t("Edit")} #{item.id}
               </h1>
               <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
-                Обновите данные мебели, измените расположение, состояние, цену
-                или загрузите новое фото.
+                Обновите данные мебели, включая модель, производителя, дату приобретения,
+                расположение, состояние, цену или фото.
               </p>
             </div>
 
@@ -341,6 +350,61 @@ function FurnitureEdit() {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
+              Модель
+            </label>
+            <input
+              type="text"
+              name="model"
+              value={formData.model}
+              onChange={handleChange}
+              placeholder="Например: Office Pro 120"
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
+              Производитель
+            </label>
+            <input
+              type="text"
+              name="manufacturer"
+              value={formData.manufacturer}
+              onChange={handleChange}
+              placeholder="Например: IKEA"
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
+              Дата приобретения
+            </label>
+            <input
+              type="date"
+              name="purchase_date"
+              value={formData.purchase_date}
+              onChange={handleChange}
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
+              Цена (KGS)
+            </label>
+            <input
+              type="text"
+              name="price_kgs"
+              value={formData.price_kgs}
+              onChange={handleChange}
+              placeholder="Например: 4500"
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
               Корпус
             </label>
             <select
@@ -385,21 +449,7 @@ function FurnitureEdit() {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Цена (KGS)
-            </label>
-            <input
-              type="text"
-              name="price_kgs"
-              value={formData.price_kgs}
-              onChange={handleChange}
-              placeholder="Например: 4500"
-              className={fieldClass}
-            />
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <label className="block text-sm font-medium text-white/70">
               Состояние
             </label>

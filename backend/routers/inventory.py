@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 import models
 import schemas
-from auth import get_current_user, require_roles
+from auth import require_roles
 from database import get_db
 
 router = APIRouter(
@@ -45,8 +45,11 @@ def furniture_to_response(item: models.Furniture):
         "condition_id": item.condition_id,
         "condition_name": item.condition.name if item.condition else None,
 
-        "price_kgs": item.price_kgs,
+        "model": item.model,
+        "manufacturer": item.manufacturer,
+        "purchase_date": item.purchase_date,
 
+        "price_kgs": item.price_kgs,
         "photo_url": item.photo_url,
         "created_at": item.created_at,
     }
@@ -55,7 +58,7 @@ def furniture_to_response(item: models.Furniture):
 def build_furniture_public_url(furniture_id: int) -> str:
     frontend_public_url = os.getenv(
         "FRONTEND_PUBLIC_URL",
-        "http://localhost:5173/inventory"
+        "http://localhost:5173"
     ).rstrip("/")
 
     return f"{frontend_public_url}/furniture/{furniture_id}"
@@ -127,6 +130,9 @@ def create_furniture(
         building_id=item.building_id,
         room_id=item.room_id,
         condition_id=item.condition_id,
+        model=item.model,
+        manufacturer=item.manufacturer,
+        purchase_date=item.purchase_date,
         price_kgs=item.price_kgs,
     )
 
@@ -180,6 +186,9 @@ def update_furniture(
     item.building_id = item_data.building_id
     item.room_id = item_data.room_id
     item.condition_id = item_data.condition_id
+    item.model = item_data.model
+    item.manufacturer = item_data.manufacturer
+    item.purchase_date = item_data.purchase_date
     item.price_kgs = item_data.price_kgs
 
     db.commit()
@@ -226,16 +235,6 @@ def delete_furniture(
         raise HTTPException(status_code=404, detail="Мебель не найдена")
 
     db.delete(item)
-    db.commit()
-
-    history = models.FurnitureHistory(
-        furniture_id=furniture_id,
-        user_email=current_user.email,
-        action="delete",
-        description="Удалена мебель"
-    )
-
-    db.add(history)
     db.commit()
 
     return {"detail": "Мебель удалена"}

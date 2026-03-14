@@ -242,6 +242,35 @@ function FurnitureDetail() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+                  <div className="mb-3 text-sm font-medium text-white/55">
+                    Производитель
+                  </div>
+                  <div className="text-xl font-semibold text-white break-words">
+                    {item.manufacturer || "—"}
+                  </div>
+                </div>
+
+                <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+                  <div className="mb-3 text-sm font-medium text-white/55">
+                    Модель
+                  </div>
+                  <div className="text-xl font-semibold text-white break-words">
+                    {item.model || "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+                <div className="mb-3 text-sm font-medium text-white/55">
+                  Дата приобретения
+                </div>
+                <div className="text-xl font-semibold text-white">
+                  {item.purchase_date || "—"}
+                </div>
+              </div>
+
               <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
                 <div className="mb-4 text-sm font-medium text-white/55">
                   QR-код
@@ -330,6 +359,27 @@ function FurnitureDetail() {
                       <span className="text-white/50">Type</span>
                       <span className="text-right text-white">
                         {item.type_name || "—"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-white/50">Manufacturer</span>
+                      <span className="text-right text-white">
+                        {item.manufacturer || "—"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-white/50">Model</span>
+                      <span className="text-right text-white">
+                        {item.model || "—"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-white/50">Purchase date</span>
+                      <span className="text-right text-white">
+                        {item.purchase_date || "—"}
                       </span>
                     </div>
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 
 
 # --- АУТЕНТИФИКАЦИЯ ---
@@ -75,6 +75,11 @@ class FurnitureCreate(BaseModel):
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
+
+    model: Optional[str] = None
+    manufacturer: Optional[str] = None
+    purchase_date: Optional[date] = None
+
     price_kgs: Optional[int] = None
 
 
@@ -84,6 +89,11 @@ class FurnitureUpdate(BaseModel):
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
+
+    model: Optional[str] = None
+    manufacturer: Optional[str] = None
+    purchase_date: Optional[date] = None
+
     price_kgs: Optional[int] = None
 
 
@@ -108,6 +118,10 @@ class FurnitureResponse(BaseModel):
 
     condition_id: Optional[int] = None
     condition_name: Optional[str] = None
+
+    model: Optional[str] = None
+    manufacturer: Optional[str] = None
+    purchase_date: Optional[date] = None
 
     price_kgs: Optional[int] = None
     photo_url: Optional[str] = None

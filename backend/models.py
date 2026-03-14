@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -69,6 +69,11 @@ class Furniture(Base):
     id = Column(Integer, primary_key=True, index=True)
     inv_number = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=False)
+
+    model = Column(String, nullable=True)
+    manufacturer = Column(String, nullable=True)
+    purchase_date = Column(Date, nullable=True)
+
     price_kgs = Column(Integer, nullable=True)
     photo_url = Column(String, nullable=True)
 

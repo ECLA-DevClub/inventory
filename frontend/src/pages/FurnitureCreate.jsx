@@ -27,6 +27,9 @@ function FurnitureCreate() {
     building_id: "",
     room_id: "",
     condition_id: "",
+    model: "",
+    manufacturer: "",
+    purchase_date: "",
     price_kgs: "",
     photo: null,
   });
@@ -170,12 +173,15 @@ function FurnitureCreate() {
 
       const createdItem = await createFurniture(
         {
-          name: formData.name,
+          name: formData.name.trim(),
           type_id: Number(formData.type_id),
           building_id: Number(formData.building_id),
           room_id: Number(formData.room_id),
           condition_id:
             formData.condition_id === "" ? null : Number(formData.condition_id),
+          model: formData.model.trim() || null,
+          manufacturer: formData.manufacturer.trim() || null,
+          purchase_date: formData.purchase_date || null,
           price_kgs:
             formData.price_kgs === "" ? null : Number(formData.price_kgs),
         },
@@ -231,7 +237,8 @@ function FurnitureCreate() {
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
             Инвентарный номер будет сгенерирован автоматически. Заполните основные данные,
-            выберите корпус и комнату, укажите цену в сомах и при желании добавьте фото.
+            выберите корпус и комнату, укажите модель, производителя, дату приобретения,
+            цену и при желании добавьте фото.
           </p>
         </div>
 
@@ -282,6 +289,61 @@ function FurnitureCreate() {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
+              Модель
+            </label>
+            <input
+              type="text"
+              name="model"
+              placeholder="Например: Office Pro 120"
+              value={formData.model}
+              onChange={handleChange}
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
+              Производитель
+            </label>
+            <input
+              type="text"
+              name="manufacturer"
+              placeholder="Например: IKEA"
+              value={formData.manufacturer}
+              onChange={handleChange}
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
+              Дата приобретения
+            </label>
+            <input
+              type="date"
+              name="purchase_date"
+              value={formData.purchase_date}
+              onChange={handleChange}
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
+              Цена (KGS)
+            </label>
+            <input
+              type="text"
+              name="price_kgs"
+              placeholder="Например: 4500"
+              value={formData.price_kgs}
+              onChange={handleChange}
+              className={fieldClass}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
               Корпус
             </label>
             <select
@@ -322,21 +384,7 @@ function FurnitureCreate() {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Цена (KGS)
-            </label>
-            <input
-              type="text"
-              name="price_kgs"
-              placeholder="Например: 4500"
-              value={formData.price_kgs}
-              onChange={handleChange}
-              className={fieldClass}
-            />
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <label className="block text-sm font-medium text-white/70">
               Состояние
             </label>
