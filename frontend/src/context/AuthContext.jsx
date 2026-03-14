@@ -10,7 +10,10 @@ function parseJwt(token) {
 
     const base64Url = parts[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "="
+    );
 
     const jsonPayload = decodeURIComponent(
       atob(padded)
@@ -107,6 +110,7 @@ export function AuthProvider({ children }) {
       setToken("");
       setIsAuthenticated(false);
       setUser(null);
+      setAuthReady(true);
       return false;
     }
 
@@ -121,6 +125,7 @@ export function AuthProvider({ children }) {
       email: payload?.email || "",
       role: payload?.role || "viewer",
     });
+    setAuthReady(true);
 
     return true;
   };
@@ -130,6 +135,7 @@ export function AuthProvider({ children }) {
     setToken("");
     setIsAuthenticated(false);
     setUser(null);
+    setAuthReady(true);
   };
 
   return (

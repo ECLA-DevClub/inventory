@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AuthContext } from "../context/AuthContext";
 import {
-  API_URL,
   getFurnitureById,
   updateFurniture,
   uploadPhoto,
@@ -11,13 +10,14 @@ import {
   getTypes,
   getBuildings,
   getRooms,
+  resolveAssetUrl,
 } from "../api";
 
 function FurnitureEdit() {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token } = useContext(AuthContext);
+  const { token, authReady } = useContext(AuthContext);
 
   const [item, setItem] = useState(null);
   const [typesList, setTypesList] = useState([]);
@@ -48,8 +48,13 @@ function FurnitureEdit() {
   }, [roomsList, formData.building_id]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadData = async () => {
       try {
+        setLoading(true);
+        setError("");
+
         const [itemData, typesData, buildingsData, roomsData, conditionsData] =
           await Promise.all([
             getFurnitureById(id),
@@ -59,40 +64,45 @@ function FurnitureEdit() {
             getConditions(),
           ]);
 
+        if (cancelled) return;
+
         setItem(itemData);
-        setTypesList(typesData || []);
-        setBuildingsList(buildingsData || []);
-        setRoomsList(roomsData || []);
-        setConditionsList(conditionsData || []);
+        setTypesList(Array.isArray(typesData) ? typesData : []);
+        setBuildingsList(Array.isArray(buildingsData) ? buildingsData : []);
+        setRoomsList(Array.isArray(roomsData) ? roomsData : []);
+        setConditionsList(Array.isArray(conditionsData) ? conditionsData : []);
 
         setFormData({
-          name: itemData.name || "",
-          type_id: itemData.type_id || "",
-          building_id: itemData.building_id || "",
-          room_id: itemData.room_id || "",
-          condition_id: itemData.condition_id ?? "",
+          name: itemData?.name || "",
+          type_id: itemData?.type_id || "",
+          building_id: itemData?.building_id || "",
+          room_id: itemData?.room_id || "",
+          condition_id: itemData?.condition_id ?? "",
           price_kgs:
-            itemData.price_kgs === null || itemData.price_kgs === undefined
+            itemData?.price_kgs === null || itemData?.price_kgs === undefined
               ? ""
               : String(itemData.price_kgs),
           photo: null,
         });
 
-        if (itemData.photo_url) {
-  const photoUrl = itemData.photo_url.startsWith("http")
-    ? itemData.photo_url
-    : `${API_URL}${itemData.photo_url}`;
-  setPreview(photoUrl);
-}
+        setPreview(resolveAssetUrl(itemData?.photo_url));
       } catch (err) {
         console.error(err);
-        setError("Не удалось загрузить данные мебели");
+        if (!cancelled) {
+          setError("Не удалось загрузить данные мебели");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -116,7 +126,7 @@ function FurnitureEdit() {
     if (name === "building_id") {
       setFormData((prev) => ({
         ...prev,
-        building_id: Number(value),
+        building_id: value === "" ? "" : Number(value),
         room_id: "",
       }));
       return;
@@ -158,6 +168,11 @@ function FurnitureEdit() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!authReady) {
+      setError("Проверка сессии ещё не завершена. Попробуйте через секунду.");
+      return;
+    }
+
     if (!token) {
       setError("Сессия истекла. Войдите снова.");
       return;
@@ -180,7 +195,7 @@ function FurnitureEdit() {
       await updateFurniture(
         id,
         {
-          name: formData.name,
+          name: formData.name.trim(),
           type_id: Number(formData.type_id),
           building_id: Number(formData.building_id),
           room_id: Number(formData.room_id),
