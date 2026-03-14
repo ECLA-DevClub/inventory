@@ -1,7 +1,13 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 
 class User(Base):
@@ -64,7 +70,15 @@ class Furniture(Base):
     name = Column(String, nullable=False)
     price_kgs = Column(Integer, nullable=True)
     photo_url = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Важно: default=utc_now нужен для старой SQLite базы,
+    # server_default=func.now() нужен как fallback на стороне БД.
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
 
     type_id = Column(Integer, ForeignKey("furniture_type.id", ondelete="SET NULL"), nullable=True)
     building_id = Column(Integer, ForeignKey("building.id", ondelete="SET NULL"), nullable=True)
@@ -90,6 +104,11 @@ class FurnitureHistory(Base):
     user_email = Column(String, nullable=False)
     action = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
 
     furniture = relationship("Furniture", back_populates="history")
