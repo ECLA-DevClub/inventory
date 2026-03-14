@@ -1,4 +1,18 @@
-const API_URL = "https://inventory-9ko1.onrender.com";
+const API_URL =
+  import.meta.env.VITE_API_URL || "https://inventory-9ko1.onrender.com";
+
+/* ---------------- HELPERS ---------------- */
+
+async function parseError(res, fallbackMessage) {
+  const err = await res.json().catch(() => ({}));
+  throw new Error(err.detail || fallbackMessage);
+}
+
+export function resolveAssetUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_URL}${path}`;
+}
 
 /* ---------------- AUTH ---------------- */
 
@@ -6,9 +20,6 @@ export async function loginUser(username, password) {
   const body = new URLSearchParams();
   body.append("username", username);
   body.append("password", password);
-
-  console.log("API_URL =", API_URL);
-  console.log("LOGIN URL =", `${API_URL}/auth/login`);
 
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -19,8 +30,7 @@ export async function loginUser(username, password) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка входа");
+    await parseError(res, "Ошибка входа");
   }
 
   return res.json();
@@ -36,8 +46,7 @@ export async function registerUser(data) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка регистрации");
+    await parseError(res, "Ошибка регистрации");
   }
 
   return res.json();
@@ -68,8 +77,7 @@ export async function createFurniture(data, token) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка создания");
+    await parseError(res, "Ошибка создания");
   }
 
   return res.json();
@@ -86,8 +94,7 @@ export async function updateFurniture(id, data, token) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка обновления");
+    await parseError(res, "Ошибка обновления");
   }
 
   return res.json();
@@ -102,11 +109,19 @@ export async function deleteFurniture(id, token) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка удаления");
+    await parseError(res, "Ошибка удаления");
   }
 
-  return res.json();
+  if (res.status === 204) {
+    return { success: true };
+  }
+
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+
+  return { success: true };
 }
 
 export async function uploadPhoto(id, file, token) {
@@ -122,8 +137,7 @@ export async function uploadPhoto(id, file, token) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка загрузки фото");
+    await parseError(res, "Ошибка загрузки фото");
   }
 
   return res.json();
@@ -140,8 +154,7 @@ export async function moveFurniture(id, data, token) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка перемещения");
+    await parseError(res, "Ошибка перемещения");
   }
 
   return res.json();
@@ -193,8 +206,7 @@ export async function getUsers(token) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка загрузки пользователей");
+    await parseError(res, "Ошибка загрузки пользователей");
   }
 
   return res.json();
@@ -211,8 +223,7 @@ export async function updateUserRole(userId, role, token) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Ошибка изменения роли");
+    await parseError(res, "Ошибка изменения роли");
   }
 
   return res.json();
