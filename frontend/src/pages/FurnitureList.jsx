@@ -1,20 +1,24 @@
-import { useContext, useEffect, useMemo, useState, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { API_URL, getFurniture } from "../api";
+import { deleteFurniture, getFurniture, resolveAssetUrl } from "../api";
 import { AuthContext } from "../context/AuthContext";
 
 function FurnitureList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { role } = useContext(AuthContext);
+  const { role, token } = useContext(AuthContext);
 
   const [furniture, setFurniture] = useState([]);
   const [modalPhoto, setModalPhoto] = useState(null);
-  const holdTimer = useRef(null);
   const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const holdTimer = useRef(null);
 
   const canManageAssets = role === "admin" || role === "manager";
+  const canDeleteAssets = role === "admin";
 
   useEffect(() => {
     getFurniture()
@@ -29,7 +33,7 @@ function FurnitureList() {
           condition: item.condition_name || "",
           status: item.condition_name || "Active",
           priceKgs: item.price_kgs ?? null,
-          photo: item.photo_url ? `${API_URL}${item.photo_url}` : null,
+          photo: resolveAssetUrl(item.photo_url),
         }));
 
         setFurniture(mapped);
@@ -43,9 +47,13 @@ function FurnitureList() {
     if (!inv) return { first: "", second: "" };
     if (inv.length <= 30) return { first: inv, second: "" };
 
-    const splitPos = Math.max(inv.lastIndexOf("-", 30), Math.floor(inv.length / 2));
+    const splitPos = Math.max(
+      inv.lastIndexOf("-", 30),
+      Math.floor(inv.length / 2)
+    );
     const first = inv.slice(0, splitPos);
     const second = inv.slice(splitPos + (inv[splitPos] === "-" ? 1 : 0));
+
     return { first, second };
   };
 
@@ -72,6 +80,35 @@ function FurnitureList() {
     });
   }, [furniture, search]);
 
+  const handleOpenDetail = (id) => {
+    navigate(`/furniture/${id}`);
+  };
+
+  const handleAskDelete = (item, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setDeleteTarget(item);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || !token) return;
+
+    try {
+      setDeleteLoading(true);
+      await deleteFurniture(deleteTarget.id, token);
+
+      setFurniture((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("Ошибка удаления мебели:", err);
+      alert(err.message || "Ошибка удаления");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -90,10 +127,7 @@ function FurnitureList() {
           </div>
 
           {canManageAssets && (
-            <Link
-              to="/furniture/create"
-              className="apple-btn apple-btn-primary"
-            >
+            <Link to="/furniture/create" className="apple-btn apple-btn-primary">
               {t("New Asset")}
             </Link>
           )}
@@ -129,7 +163,8 @@ function FurnitureList() {
             {filtered.map((f) => (
               <tr
                 key={f.id}
-                className="border-b border-white/5 transition hover:bg-white/10"
+                onClick={() => handleOpenDetail(f.id)}
+                className="cursor-pointer border-b border-white/5 transition hover:bg-white/10"
               >
                 <td className="whitespace-nowrap px-6 py-4 text-blue-300">
                   <div className="flex items-center gap-3">
@@ -138,11 +173,20 @@ function FurnitureList() {
                         src={f.photo}
                         alt={f.name || f.invNumber}
                         className="h-20 w-20 cursor-zoom-in rounded-md object-cover"
-                        onClick={() => setModalPhoto(f.photo)}
-                        onMouseDown={() => {
-                          holdTimer.current = setTimeout(() => setModalPhoto(f.photo), 600);
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setModalPhoto(f.photo);
                         }}
-                        onMouseUp={() => {
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          holdTimer.current = setTimeout(
+                            () => setModalPhoto(f.photo),
+                            600
+                          );
+                        }}
+                        onMouseUp={(e) => {
+                          e.stopPropagation();
                           if (holdTimer.current) {
                             clearTimeout(holdTimer.current);
                             holdTimer.current = null;
@@ -156,15 +200,15 @@ function FurnitureList() {
                         }}
                       />
                     ) : (
-                      <div className="grid h-20 w-20 place-items-center rounded-md bg-white/5 text-xs text-white/50">
+                      <div
+                        className="grid h-20 w-20 place-items-center rounded-md bg-white/5 text-xs text-white/50"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {t("No photo")}
                       </div>
                     )}
 
-                    <Link
-                      to={`/furniture/${f.id}`}
-                      className="max-w-[260px] hover:underline"
-                    >
+                    <div className="max-w-[260px]">
                       {(() => {
                         const { first, second } = formatInv(f.invNumber);
                         return (
@@ -178,7 +222,7 @@ function FurnitureList() {
                           </div>
                         );
                       })()}
-                    </Link>
+                    </div>
                   </div>
                 </td>
 
@@ -197,14 +241,26 @@ function FurnitureList() {
                 </td>
 
                 {canManageAssets && (
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center gap-2">
+                  <td
+                    className="whitespace-nowrap px-6 py-4"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => navigate(`/furniture/${f.id}/edit`)}
-                        className="text-sm text-white/80 hover:underline"
+                        className="text-sm text-white/80 transition hover:text-white hover:underline"
                       >
                         {t("Edit")}
                       </button>
+
+                      {canDeleteAssets && (
+                        <button
+                          onClick={(e) => handleAskDelete(f, e)}
+                          className="text-sm text-red-300 transition hover:text-red-200 hover:underline"
+                        >
+                          {t("Delete")}
+                        </button>
+                      )}
                     </div>
                   </td>
                 )}
@@ -257,10 +313,14 @@ function FurnitureList() {
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    holdTimer.current = setTimeout(() => setModalPhoto(f.photo), 600);
+                    holdTimer.current = setTimeout(
+                      () => setModalPhoto(f.photo),
+                      600
+                    );
                   }}
                   onMouseUp={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     if (holdTimer.current) {
                       clearTimeout(holdTimer.current);
                       holdTimer.current = null;
@@ -319,12 +379,22 @@ function FurnitureList() {
                 <button
                   onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     navigate(`/furniture/${f.id}/edit`);
                   }}
-                  className="rounded-lg bg-white/5 px-3 py-2 text-sm"
+                  className="rounded-lg bg-white/5 px-3 py-2 text-sm text-white/90 transition hover:bg-white/10"
                 >
-                  Edit
+                  {t("Edit")}
                 </button>
+
+                {canDeleteAssets && (
+                  <button
+                    onClick={(e) => handleAskDelete(f, e)}
+                    className="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200 transition hover:bg-red-500/20"
+                  >
+                    {t("Delete")}
+                  </button>
+                )}
               </div>
             )}
           </Link>
@@ -357,6 +427,51 @@ function FurnitureList() {
                 className="rounded-lg bg-white/10 px-4 py-2 hover:bg-white/20"
               >
                 {t("Cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          onClick={() => {
+            if (!deleteLoading) setDeleteTarget(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f1729]/95 p-6 shadow-2xl backdrop-blur-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-white">
+              {t("Delete asset")}
+            </h3>
+
+            <p className="mt-3 text-sm leading-6 text-white/70">
+              {t("Are you sure you want to delete this asset?")}
+            </p>
+
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/85">
+              <div className="font-medium">{deleteTarget.name || "—"}</div>
+              <div className="mt-1 text-white/55">{deleteTarget.invNumber}</div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t("Cancel")}
+              </button>
+
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+                className="rounded-2xl border border-red-400/20 bg-red-500/15 px-4 py-2 text-sm text-red-100 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteLoading ? t("Deleting") : t("Delete")}
               </button>
             </div>
           </div>
