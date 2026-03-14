@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 import os
 
 import auth
@@ -12,6 +13,21 @@ from routers.reference import router as reference_router
 from routers.users import router as users_router
 
 models.Base.metadata.create_all(bind=engine)
+
+
+def ensure_sqlite_schema():
+    db_url = str(engine.url)
+
+    if not db_url.startswith("sqlite"):
+        return
+
+    with engine.connect() as conn:
+        result = conn.execute(text("PRAGMA table_info(furniture)"))
+        columns = [row[1] for row in result.fetchall()]
+
+        if "price_kgs" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN price_kgs INTEGER"))
+            conn.commit()
 
 
 def seed_default_users():
@@ -54,6 +70,7 @@ def seed_default_users():
         db.close()
 
 
+ensure_sqlite_schema()
 seed_default_users()
 
 app = FastAPI(
@@ -65,15 +82,22 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+frontend_public_url = os.getenv("FRONTEND_PUBLIC_URL")
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://ecla-devclub.github.io",
+    "https://ecla-devclub.github.io/inventory",
+    "https://inventory-7cb9.vercel.app",
+]
+
+if frontend_public_url and frontend_public_url not in allowed_origins:
+    allowed_origins.append(frontend_public_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://ecla-devclub.github.io",
-        "https://ecla-devclub.github.io/inventory",
-        "https://inventory-7cb9.vercel.app",
-        "https://inventory-7cb9-git-main-sidikovoatillo44-2899s-projects.vercel.app",
-    ],
+    allow_origins=allowed_origins,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -86,8 +110,8 @@ app.include_router(reference_router)
 app.include_router(users_router)
 
 UPLOAD_DIR = "static/item_photos"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs("static", exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -103,4 +127,5 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

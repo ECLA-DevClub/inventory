@@ -1,137 +1,95 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
-import os
-
-import auth
-import models
-from database import engine, SessionLocal
-from routers.auth_router import router as auth_router
-from routers.reference import router as reference_router
-from routers.users import router as users_router
-
-models.Base.metadata.create_all(bind=engine)
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from database import Base
 
 
-def ensure_sqlite_schema():
-    """
-    Маленький self-heal для SQLite без Alembic.
-    Нужен, чтобы старые SQLite базы (например на Render) не падали,
-    если в коде появилась новая колонка, а таблица уже существовала.
-    """
-    db_url = str(engine.url)
+class User(Base):
+    __tablename__ = "users"
 
-    # Только для SQLite
-    if not db_url.startswith("sqlite"):
-        return
-
-    with engine.connect() as conn:
-        result = conn.execute(text("PRAGMA table_info(furniture)"))
-        columns = [row[1] for row in result.fetchall()]
-
-        if "price_kgs" not in columns:
-            conn.execute(text("ALTER TABLE furniture ADD COLUMN price_kgs INTEGER"))
-            conn.commit()
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, default="viewer", nullable=False)
 
 
-def seed_default_users():
-    db = SessionLocal()
-    try:
-        users = [
-            {
-                "email": "admin@example.com",
-                "password": "1234",
-                "role": auth.ROLE_ADMIN,
-            },
-            {
-                "email": "manager@example.com",
-                "password": "1234",
-                "role": auth.ROLE_MANAGER,
-            },
-            {
-                "email": "viewer@example.com",
-                "password": "1234",
-                "role": auth.ROLE_VIEWER,
-            },
-        ]
+class FurnitureType(Base):
+    __tablename__ = "furniture_type"
 
-        for user_data in users:
-            existing_user = (
-                db.query(models.User)
-                .filter(models.User.email == user_data["email"])
-                .first()
-            )
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
 
-            if not existing_user:
-                new_user = models.User(
-                    email=user_data["email"],
-                    hashed_password=auth.get_password_hash(user_data["password"]),
-                    role=user_data["role"],
-                )
-                db.add(new_user)
-                db.commit()
-    finally:
-        db.close()
+    furniture = relationship("Furniture", back_populates="furniture_type")
 
 
-# Сначала чиним схему SQLite, потом сидируем
-ensure_sqlite_schema()
-seed_default_users()
+class Building(Base):
+    __tablename__ = "building"
 
-app = FastAPI(
-    title="Inventory Management System",
-    description="API для учета мебели с системой аутентификации и загрузкой фото",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
-)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
 
-frontend_public_url = os.getenv("FRONTEND_PUBLIC_URL")
-
-allowed_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://inventory-7cb9.vercel.app",
-    "https://ecla-devclub.github.io",
-    "https://ecla-devclub.github.io/inventory",
-]
-
-if frontend_public_url and frontend_public_url not in allowed_origins:
-    allowed_origins.append(frontend_public_url)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(auth_router)
-app.include_router(inventory_router)
-app.include_router(reference_router)
-app.include_router(users_router)
-
-UPLOAD_DIR = "static/item_photos"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs("static", exist_ok=True)
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
+    rooms = relationship("Room", back_populates="building")
+    furniture = relationship("Furniture", back_populates="building")
 
 
-@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
-def health_check():
-    return {
-        "status": "online",
-        "message": "Inventory API is running",
-        "docs": "/docs",
-    }
+class Condition(Base):
+    __tablename__ = "condition"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+
+    furniture = relationship("Furniture", back_populates="condition")
 
 
-if __name__ == "__main__":
-    import uvicorn
+class Room(Base):
+    __tablename__ = "room"
 
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    building_id = Column(
+        Integer,
+        ForeignKey("building.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    building = relationship("Building", back_populates="rooms")
+    furniture = relationship("Furniture", back_populates="room")
+
+
+class Furniture(Base):
+    __tablename__ = "furniture"
+
+    id = Column(Integer, primary_key=True, index=True)
+    inv_number = Column(String, unique=True, index=True, nullable=True)
+    name = Column(String, nullable=False)
+    price_kgs = Column(Integer, nullable=True)
+    photo_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    type_id = Column(Integer, ForeignKey("furniture_type.id", ondelete="SET NULL"), nullable=True)
+    building_id = Column(Integer, ForeignKey("building.id", ondelete="SET NULL"), nullable=True)
+    room_id = Column(Integer, ForeignKey("room.id", ondelete="SET NULL"), nullable=True)
+    condition_id = Column(Integer, ForeignKey("condition.id", ondelete="SET NULL"), nullable=True)
+
+    furniture_type = relationship("FurnitureType", back_populates="furniture")
+    building = relationship("Building", back_populates="furniture")
+    room = relationship("Room", back_populates="furniture")
+    condition = relationship("Condition", back_populates="furniture")
+    history = relationship("FurnitureHistory", back_populates="furniture")
+
+
+class FurnitureHistory(Base):
+    __tablename__ = "furniture_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    furniture_id = Column(
+        Integer,
+        ForeignKey("furniture.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_email = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    furniture = relationship("Furniture", back_populates="history")
