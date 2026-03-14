@@ -2,10 +2,10 @@ import { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  API_URL,
   getFurnitureById,
   deleteFurniture,
   getFurnitureQrUrl,
+  resolveAssetUrl,
 } from "../api";
 import { AuthContext } from "../context/AuthContext";
 
@@ -13,28 +13,46 @@ function FurnitureDetail() {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role } = useContext(AuthContext);
+  const { role, token, authReady } = useContext(AuthContext);
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloadingQr, setDownloadingQr] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const canEdit = role === "admin" || role === "manager";
   const canDelete = role === "admin";
 
   useEffect(() => {
-    getFurnitureById(id)
-      .then((data) => {
+    let cancelled = false;
+
+    const loadItem = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getFurnitureById(id);
+
+        if (cancelled) return;
         setItem(data);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error(err);
-        setError("Не удалось загрузить мебель");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+        if (!cancelled) {
+          setError("Не удалось загрузить мебель");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadItem();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const handleDelete = async () => {
@@ -43,15 +61,28 @@ function FurnitureDetail() {
       return;
     }
 
-    const ok = confirm("Удалить эту мебель?");
+    if (!authReady) {
+      alert("Проверка сессии ещё не завершена. Попробуйте ещё раз.");
+      return;
+    }
+
+    if (!token) {
+      alert("Сессия истекла. Войдите снова.");
+      return;
+    }
+
+    const ok = window.confirm("Удалить эту мебель?");
     if (!ok) return;
 
     try {
-      await deleteFurniture(id);
+      setDeleting(true);
+      await deleteFurniture(id, token);
       navigate("/furniture");
     } catch (err) {
       console.error(err);
-      alert("Не удалось удалить мебель");
+      alert(err.message || "Не удалось удалить мебель");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -114,7 +145,7 @@ function FurnitureDetail() {
     );
   }
 
-  const photoSrc = item.photo_url ? `${API_URL}${item.photo_url}` : null;
+  const photoSrc = resolveAssetUrl(item.photo_url);
   const qrSrc = getFurnitureQrUrl(item.id);
 
   return (
@@ -259,9 +290,10 @@ function FurnitureDetail() {
                 {canDelete && (
                   <button
                     onClick={handleDelete}
-                    className="w-full rounded-[1.25rem] bg-red-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-red-700"
+                    disabled={deleting}
+                    className="w-full rounded-[1.25rem] bg-red-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                   >
-                    {t("Delete")}
+                    {deleting ? "Удаление..." : t("Delete")}
                   </button>
                 )}
               </div>
