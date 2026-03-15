@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
 from datetime import datetime, date
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr
 
 
 # --- АУТЕНТИФИКАЦИЯ ---

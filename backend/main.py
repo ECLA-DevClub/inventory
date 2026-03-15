@@ -1,12 +1,13 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 import auth
 import models
-from database import engine, SessionLocal
+from database import SessionLocal, engine
 from routers.auth_router import router as auth_router
 from routers.inventory import router as inventory_router
 from routers.reference import router as reference_router
@@ -27,6 +28,18 @@ def ensure_sqlite_schema():
 
         if "price_kgs" not in columns:
             conn.execute(text("ALTER TABLE furniture ADD COLUMN price_kgs INTEGER"))
+            conn.commit()
+
+        if "model" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN model TEXT"))
+            conn.commit()
+
+        if "manufacturer" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN manufacturer TEXT"))
+            conn.commit()
+
+        if "purchase_date" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN purchase_date DATE"))
             conn.commit()
 
 
@@ -189,14 +202,19 @@ app.include_router(inventory_router)
 app.include_router(reference_router)
 app.include_router(users_router)
 
-UPLOAD_DIR = "static/item_photos"
-os.makedirs("static", exist_ok=True)
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Оставляем static mount для совместимости со старыми фото,
+# которые уже могли сохраниться как /static/item_photos/...
+# Новые фото после правки inventory.py будут идти в S3.
+STATIC_DIR = "static"
+LEGACY_UPLOAD_DIR = os.path.join(STATIC_DIR, "item_photos")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+os.makedirs(LEGACY_UPLOAD_DIR, exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
+@app.get("/", tags=["Root"])
 def health_check():
     return {
         "status": "online",

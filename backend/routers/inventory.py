@@ -1,10 +1,12 @@
 import io
 import os
-import shutil
-from typing import List
+from typing import List, Optional
+from urllib.parse import quote
 from uuid import uuid4
 
+import boto3
 import qrcode
+from botocore.config import Config
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
@@ -19,8 +21,131 @@ router = APIRouter(
     tags=["Inventory"]
 )
 
-UPLOAD_DIR = "static/item_photos"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# =========================
+# S3 CONFIG
+# =========================
+
+def get_s3_client():
+    bucket_name = os.getenv("S3_BUCKET_NAME")
+    access_key = os.getenv("S3_ACCESS_KEY_ID")
+    secret_key = os.getenv("S3_SECRET_ACCESS_KEY")
+
+    if not bucket_name or not access_key or not secret_key:
+        raise HTTPException(
+            status_code=500,
+            detail="S3 storage не настроен: отсутствуют S3_BUCKET_NAME / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY"
+        )
+
+    region = os.getenv("S3_REGION", "auto")
+    endpoint_url = os.getenv("S3_ENDPOINT_URL")
+
+    return boto3.client(
+        "s3",
+        region_name=region,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        config=Config(signature_version="s3v4", s3={"addressing_style": "auto"}),
+    )
+
+
+def get_s3_bucket_name() -> str:
+    bucket_name = os.getenv("S3_BUCKET_NAME")
+    if not bucket_name:
+        raise HTTPException(status_code=500, detail="S3_BUCKET_NAME не задан")
+    return bucket_name
+
+
+def get_s3_public_base_url() -> str:
+    public_base_url = os.getenv("S3_PUBLIC_BASE_URL", "").rstrip("/")
+    if not public_base_url:
+        raise HTTPException(
+            status_code=500,
+            detail="S3_PUBLIC_BASE_URL не задан. Нужен публичный base URL для открытия фото."
+        )
+    return public_base_url
+
+
+def get_s3_key_prefix() -> str:
+    return os.getenv("S3_KEY_PREFIX", "item_photos").strip("/")
+
+
+def normalize_extension(filename: Optional[str]) -> str:
+    if not filename or "." not in filename:
+        return "bin"
+
+    ext = filename.rsplit(".", 1)[-1].lower().strip()
+    if not ext:
+        return "bin"
+
+    allowed = {
+        "jpg", "jpeg", "png", "webp", "gif",
+        "bmp", "heic", "heif"
+    }
+    return ext if ext in allowed else "bin"
+
+
+def build_s3_object_key(filename: Optional[str]) -> str:
+    ext = normalize_extension(filename)
+    prefix = get_s3_key_prefix()
+    return f"{prefix}/{uuid4().hex}.{ext}"
+
+
+def build_public_photo_url(object_key: str) -> str:
+    base = get_s3_public_base_url()
+    return f"{base}/{quote(object_key)}"
+
+
+def extract_s3_key_from_photo_url(photo_url: Optional[str]) -> Optional[str]:
+    if not photo_url:
+        return None
+
+    public_base = os.getenv("S3_PUBLIC_BASE_URL", "").rstrip("/")
+    if not public_base:
+        return None
+
+    if photo_url.startswith(public_base + "/"):
+        return photo_url.replace(public_base + "/", "", 1)
+
+    return None
+
+
+def upload_file_to_s3(file: UploadFile) -> str:
+    s3 = get_s3_client()
+    bucket_name = get_s3_bucket_name()
+    object_key = build_s3_object_key(file.filename)
+
+    extra_args = {}
+    if file.content_type:
+        extra_args["ContentType"] = file.content_type
+
+    try:
+        file.file.seek(0)
+        s3.upload_fileobj(
+            file.file,
+            bucket_name,
+            object_key,
+            ExtraArgs=extra_args if extra_args else None,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка загрузки файла в S3: {str(e)}")
+
+    return build_public_photo_url(object_key)
+
+
+def delete_file_from_s3_by_photo_url(photo_url: Optional[str]) -> None:
+    object_key = extract_s3_key_from_photo_url(photo_url)
+    if not object_key:
+        return
+
+    try:
+        s3 = get_s3_client()
+        bucket_name = get_s3_bucket_name()
+        s3.delete_object(Bucket=bucket_name, Key=object_key)
+    except Exception:
+        # Удаление файла не должно ломать основную операцию
+        pass
 
 
 # =========================
@@ -234,8 +359,12 @@ def delete_furniture(
     if not item:
         raise HTTPException(status_code=404, detail="Мебель не найдена")
 
+    old_photo_url = item.photo_url
+
     db.delete(item)
     db.commit()
+
+    delete_file_from_s3_by_photo_url(old_photo_url)
 
     return {"detail": "Мебель удалена"}
 
@@ -256,15 +385,17 @@ def upload_furniture_photo(
     if not item:
         raise HTTPException(status_code=404, detail="Мебель не найдена")
 
-    ext = file.filename.split(".")[-1]
-    unique_filename = f"{uuid4()}.{ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Файл не выбран")
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    old_photo_url = item.photo_url
+    new_photo_url = upload_file_to_s3(file)
 
-    item.photo_url = f"/static/item_photos/{unique_filename}"
+    item.photo_url = new_photo_url
     db.commit()
+    db.refresh(item)
+
+    delete_file_from_s3_by_photo_url(old_photo_url)
 
     history = models.FurnitureHistory(
         furniture_id=item.id,
@@ -286,7 +417,7 @@ def upload_furniture_photo(
 # HISTORY
 # =========================
 
-@router.get("/history/{furniture_id}")
+@router.get("/history/{furniture_id}", response_model=List[schemas.FurnitureHistoryResponse])
 def get_furniture_history(furniture_id: int, db: Session = Depends(get_db)):
     history = (
         db.query(models.FurnitureHistory)
