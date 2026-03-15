@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Html5Qrcode } from "html5-qrcode";
 import { getFurnitureById, getBuildings, getRooms } from "../api";
 import jsPDF from "jspdf";
@@ -21,6 +22,8 @@ function extractFurnitureIdFromQr(text) {
 const SAME_QR_COOLDOWN_MS = 3000;
 
 function AuditSession() {
+  const { t } = useTranslation();
+
   const scannerRef = useRef(null);
   const scannerElementId = "inventory-qr-reader";
   const isMountedRef = useRef(true);
@@ -67,9 +70,7 @@ function AuditSession() {
           }
 
           scanner.clear().catch(() => {});
-        } catch {
-          // ignore cleanup errors
-        }
+        } catch {}
       }
     };
   }, []);
@@ -81,7 +82,7 @@ function AuditSession() {
       setRooms(Array.isArray(r) ? r : []);
     } catch (e) {
       console.error(e);
-      setError("Не удалось загрузить корпуса и комнаты");
+      setError(t("Buildings rooms load failed"));
     }
   }
 
@@ -154,25 +155,19 @@ function AuditSession() {
     try {
       const scanner = scannerRef.current;
 
-      if (!scanner) {
-        return;
-      }
+      if (!scanner) return;
 
       const state = scanner.getState?.();
 
       if (state === 2 || state === 1) {
         try {
           await scanner.stop();
-        } catch {
-          // ignore stop errors
-        }
+        } catch {}
       }
 
       try {
         await scanner.clear();
-      } catch {
-        // ignore clear errors
-      }
+      } catch {}
 
       if (scannerRef.current === scanner) {
         scannerRef.current = null;
@@ -199,7 +194,7 @@ function AuditSession() {
 
       const container = document.getElementById(scannerElementId);
       if (!container) {
-        setError("Контейнер сканера не найден. Обновите страницу.");
+        setError(t("Scanner container not found"));
         return;
       }
 
@@ -248,9 +243,7 @@ function AuditSession() {
       scannerRef.current = null;
 
       if (isMountedRef.current) {
-        setError(
-          "Не удалось запустить камеру. Проверь доступ к камере и HTTPS/localhost."
-        );
+        setError(t("Camera start failed"));
         setIsScannerRunning(false);
       }
     } finally {
@@ -263,7 +256,7 @@ function AuditSession() {
 
   async function startSession() {
     if (!selectedBuilding || !selectedRoom) {
-      setError("Выберите корпус и комнату");
+      setError(t("Choose building and room"));
       return;
     }
 
@@ -322,15 +315,15 @@ function AuditSession() {
           key: invalidKey,
           status: "missing",
           inv: "-",
-          name: "QR не распознан",
+          name: t("QR not recognized"),
           building: "-",
           room: "-",
         });
       } else {
-        setScanMessage("Этот QR уже был обработан.");
+        setScanMessage(t("Already scanned QR"));
       }
 
-      setError("QR не содержит корректный furniture id.");
+      setError(t("QR has no valid furniture id"));
       setIsProcessing(false);
       return;
     }
@@ -347,7 +340,7 @@ function AuditSession() {
 
       if (seenKeysRef.current.has(rowKey)) {
         setScanMessage(
-          `Объект ${item.inv_number || `INV-${item.id}`} уже был отсканирован в этой сессии.`
+          `${t("Already scanned object")} ${item.inv_number || `INV-${item.id}`}.`
         );
         setIsProcessing(false);
         return;
@@ -357,7 +350,7 @@ function AuditSession() {
         key: rowKey,
         status,
         inv: item.inv_number || `INV-${item.id}`,
-        name: item.name || "Без названия",
+        name: item.name || t("Untitled"),
         building: item.building_name || "-",
         room: item.room_name || "-",
       });
@@ -370,14 +363,14 @@ function AuditSession() {
         );
       } else {
         setScanMessage(
-          `Объект найден, но находится не в выбранной комнате: ${item.inv_number || `INV-${item.id}`}`
+          `${t("Found but wrong room")}: ${item.inv_number || `INV-${item.id}`}`
         );
       }
     } catch {
       const missingKey = `missing-${id}`;
 
       if (seenKeysRef.current.has(missingKey)) {
-        setScanMessage(`Объект INV-${id} уже был отмечен как отсутствующий.`);
+        setScanMessage(`${t("Already marked missing")} INV-${id}.`);
         setIsProcessing(false);
         return;
       }
@@ -386,12 +379,12 @@ function AuditSession() {
         key: missingKey,
         status: "missing",
         inv: `INV-${id}`,
-        name: "Не найдено",
+        name: t("Not found"),
         building: "-",
         room: "-",
       });
 
-      setError(`Мебель с id ${id} не найдена.`);
+      setError(`${t("Furniture id not found")} ${id}.`);
     }
 
     setIsProcessing(false);
@@ -419,14 +412,14 @@ function AuditSession() {
 
     const doc = new jsPDF();
 
-    doc.text("Inventory Audit Report", 14, 15);
-    doc.text(`Building: ${building}`, 14, 25);
-    doc.text(`Room: ${room}`, 14, 32);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 39);
+    doc.text(t("Inventory Audit Report"), 14, 15);
+    doc.text(`${t("Building")}: ${building}`, 14, 25);
+    doc.text(`${t("Room")}: ${room}`, 14, 32);
+    doc.text(`${t("Date")}: ${new Date().toLocaleDateString()}`, 14, 39);
 
     autoTable(doc, {
       startY: 50,
-      head: [["Inv", "Name", "Location", "Status"]],
+      head: [[t("Inv"), t("Name"), t("Location"), t("Status")]],
       body: report.map((r) => [
         r.inv,
         r.name,
@@ -434,8 +427,8 @@ function AuditSession() {
         r.status === "ok"
           ? "OK"
           : r.status === "wrong"
-          ? "Wrong room"
-          : "Missing",
+          ? t("Wrong room")
+          : t("Missing"),
       ]),
     });
 
@@ -471,22 +464,21 @@ function AuditSession() {
   if (!sessionStarted) {
     return (
       <div className="relative animate-fadeIn text-white">
-        <div className="glass-strong relative overflow-hidden rounded-[2rem] border border-white/15 p-6 shadow-2xl shadow-black/20 sm:p-8 lg:p-10 max-w-3xl">
+        <div className="glass-strong relative max-w-3xl overflow-hidden rounded-[2rem] border border-white/15 p-6 shadow-2xl shadow-black/20 sm:p-8 lg:p-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-0 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
 
           <div className="relative z-10">
             <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-white/45">
-              Audit workflow
+              {t("Audit workflow")}
             </div>
 
             <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Start Inventory Session
+              {t("Start Inventory Session")}
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
-              Выбери корпус и комнату, затем начни сессию аудита. После запуска
-              можно сканировать QR-коды и сразу получать статус объекта.
+              {t("Audit session start description")}
             </p>
 
             {error && (
@@ -498,7 +490,7 @@ function AuditSession() {
             <div className="mt-8 grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-white/70">
-                  Корпус
+                  {t("Building")}
                 </label>
                 <select
                   className={selectClass}
@@ -506,7 +498,7 @@ function AuditSession() {
                   onChange={(e) => setSelectedBuilding(e.target.value)}
                 >
                   <option value="" className="bg-slate-900">
-                    Select Building
+                    {t("Choose building")}
                   </option>
                   {buildings.map((b) => (
                     <option key={b.id} value={b.id} className="bg-slate-900">
@@ -518,7 +510,7 @@ function AuditSession() {
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-white/70">
-                  Комната
+                  {t("Room")}
                 </label>
                 <select
                   className={selectClass}
@@ -526,7 +518,7 @@ function AuditSession() {
                   onChange={(e) => setSelectedRoom(e.target.value)}
                 >
                   <option value="" className="bg-slate-900">
-                    Select Room
+                    {t("Choose room")}
                   </option>
                   {filteredRooms.map((r) => (
                     <option key={r.id} value={r.id} className="bg-slate-900">
@@ -539,14 +531,14 @@ function AuditSession() {
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4">
-                <div className="text-xs text-white/45">Selected Building</div>
+                <div className="text-xs text-white/45">{t("Selected Building")}</div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {selectedBuildingName}
                 </div>
               </div>
 
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4">
-                <div className="text-xs text-white/45">Selected Room</div>
+                <div className="text-xs text-white/45">{t("Selected Room")}</div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {selectedRoomName}
                 </div>
@@ -559,7 +551,7 @@ function AuditSession() {
                 disabled={isStartingScanner}
                 className="apple-btn apple-btn-primary rounded-[1.25rem] px-6 py-4 text-sm font-semibold disabled:opacity-60"
               >
-                {isStartingScanner ? "Запуск..." : "Start Audit"}
+                {isStartingScanner ? t("Starting...") : t("Start Audit")}
               </button>
             </div>
           </div>
@@ -577,15 +569,15 @@ function AuditSession() {
         <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-white/45">
-              Live audit
+              {t("Live audit")}
             </div>
             <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Inventory Audit Session
+              {t("Inventory Audit Session")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
-              Текущая сессия проверяет мебель для комнаты{" "}
+              {t("Current audit room")}{" "}
               <span className="font-medium text-white">{selectedRoomName}</span>{" "}
-              в корпусе{" "}
+              {t("Current audit building")}{" "}
               <span className="font-medium text-white">{selectedBuildingName}</span>.
             </p>
           </div>
@@ -596,7 +588,7 @@ function AuditSession() {
                 onClick={stopScanner}
                 className="apple-btn apple-btn-danger rounded-[1.25rem] px-5 py-3 text-sm font-semibold"
               >
-                Остановить камеру
+                {t("Stop Camera")}
               </button>
             ) : (
               <button
@@ -604,7 +596,7 @@ function AuditSession() {
                 disabled={isStartingScanner}
                 className="apple-btn apple-btn-primary rounded-[1.25rem] px-5 py-3 text-sm font-semibold disabled:opacity-60"
               >
-                {isStartingScanner ? "Запуск..." : "Запустить камеру"}
+                {isStartingScanner ? t("Starting...") : t("Start Camera")}
               </button>
             )}
 
@@ -612,14 +604,14 @@ function AuditSession() {
               onClick={handleResetReport}
               className="apple-btn rounded-[1.25rem] px-5 py-3 text-sm font-medium text-white/85"
             >
-              Очистить отчёт
+              {t("Clear Report")}
             </button>
 
             <button
               onClick={handleFinishSession}
               className="apple-btn rounded-[1.25rem] px-5 py-3 text-sm font-medium text-white/85"
             >
-              Завершить сессию
+              {t("Finish Session")}
             </button>
           </div>
         </div>
@@ -642,15 +634,15 @@ function AuditSession() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-white/75">
-                    QR Scanner
+                    {t("QR Scanner")}
                   </div>
                   <div className="mt-1 text-xs text-white/45">
-                    Наведи камеру на QR-код мебели для проверки
+                    {t("Point camera to QR")}
                   </div>
                 </div>
 
                 <span className="liquid-badge">
-                  {isScannerRunning ? "Live" : "Idle"}
+                  {isScannerRunning ? t("Live") : t("Idle")}
                 </span>
               </div>
 
@@ -662,7 +654,7 @@ function AuditSession() {
 
             <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl">
               <div className="mb-4 text-sm font-medium text-white/75">
-                Audit Summary
+                {t("Audit Summary")}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -674,14 +666,16 @@ function AuditSession() {
                 </div>
 
                 <div className="rounded-[1.25rem] border border-yellow-400/15 bg-yellow-500/10 p-4">
-                  <div className="text-xs text-yellow-200/70">Wrong room</div>
+                  <div className="text-xs text-yellow-200/70">
+                    {t("Wrong room")}
+                  </div>
                   <div className="mt-2 text-2xl font-semibold text-white">
                     {wrongCount}
                   </div>
                 </div>
 
                 <div className="rounded-[1.25rem] border border-red-400/15 bg-red-500/10 p-4">
-                  <div className="text-xs text-red-200/70">Missing</div>
+                  <div className="text-xs text-red-200/70">{t("Missing")}</div>
                   <div className="mt-2 text-2xl font-semibold text-white">
                     {missingCount}
                   </div>
@@ -692,7 +686,7 @@ function AuditSession() {
                 onClick={exportPDF}
                 className="apple-btn apple-btn-primary mt-5 rounded-[1.25rem] px-5 py-3 text-sm font-semibold"
               >
-                Export PDF
+                {t("Export PDF")}
               </button>
             </div>
           </div>
@@ -701,20 +695,22 @@ function AuditSession() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-medium text-white/75">
-                  Scan Results
+                  {t("Scan Results")}
                 </div>
                 <div className="mt-1 text-xs text-white/45">
-                  Последние результаты проверки в этой сессии
+                  {t("Audit results description")}
                 </div>
               </div>
 
-              <span className="liquid-badge">{report.length} rows</span>
+              <span className="liquid-badge">
+                {report.length} {t("Rows")}
+              </span>
             </div>
 
             <div className="max-h-[680px] space-y-3 overflow-auto pr-1">
               {report.length === 0 ? (
                 <div className="grid min-h-[220px] place-items-center rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.03] text-center text-sm text-white/45">
-                  Сканов пока нет.
+                  {t("No scans yet")}
                 </div>
               ) : (
                 report.map((r) => (
@@ -731,8 +727,8 @@ function AuditSession() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="text-sm font-semibold text-white">
                         {r.status === "ok" && "✓ OK"}
-                        {r.status === "wrong" && "⚠ Wrong room"}
-                        {r.status === "missing" && "❌ Missing"}
+                        {r.status === "wrong" && `⚠ ${t("Wrong room")}`}
+                        {r.status === "missing" && `❌ ${t("Missing")}`}
                       </div>
                       <div className="text-xs text-white/45">{r.time}</div>
                     </div>
@@ -742,10 +738,10 @@ function AuditSession() {
                         <span className="text-white/45">Inv:</span> {r.inv}
                       </div>
                       <div>
-                        <span className="text-white/45">Name:</span> {r.name}
+                        <span className="text-white/45">{t("Name")}:</span> {r.name}
                       </div>
                       <div>
-                        <span className="text-white/45">Location:</span>{" "}
+                        <span className="text-white/45">{t("Location")}:</span>{" "}
                         {r.building}/{r.room}
                       </div>
                     </div>

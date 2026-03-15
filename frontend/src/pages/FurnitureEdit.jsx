@@ -40,6 +40,7 @@ function FurnitureEdit() {
 
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -95,7 +96,7 @@ function FurnitureEdit() {
       } catch (err) {
         console.error(err);
         if (!cancelled) {
-          setError("Не удалось загрузить данные мебели");
+          setError(t("Asset load failed"));
         }
       } finally {
         if (!cancelled) {
@@ -109,7 +110,7 @@ function FurnitureEdit() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (!formData.building_id) return;
@@ -126,8 +127,20 @@ function FurnitureEdit() {
     }
   }, [formData.building_id, filteredRooms, formData.room_id]);
 
+  const clearFieldError = (name) => {
+    setFieldErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    setError("");
+    clearFieldError(name);
 
     if (name === "building_id") {
       setFormData((prev) => ({
@@ -154,49 +167,118 @@ function FurnitureEdit() {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0];
+    setError("");
+    clearFieldError("photo");
+
     if (!file) return;
 
     if (!["image/jpeg", "image/png"].includes(file.type)) {
-      setError("Разрешены только JPG и PNG");
+      setFieldErrors((prev) => ({
+        ...prev,
+        photo: t("JPG PNG only"),
+      }));
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError("Максимальный размер файла 5 MB");
+      setFieldErrors((prev) => ({
+        ...prev,
+        photo: t("Max file 5MB"),
+      }));
       return;
     }
 
     setFormData((prev) => ({ ...prev, photo: file }));
     setPreview(URL.createObjectURL(file));
-    setError("");
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.name.trim()) {
+      errors.name = t("Name is required");
+    }
+
+    if (!formData.type_id) {
+      errors.type_id = t("Choose type error");
+    }
+
+    if (!formData.building_id) {
+      errors.building_id = t("Choose building error");
+    }
+
+    if (!formData.room_id) {
+      errors.room_id = t("Choose room error");
+    }
+
+    if (
+      formData.purchase_date &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(formData.purchase_date)
+    ) {
+      errors.purchase_date = t("Date format error");
+    }
+
+    if (
+      formData.price_kgs !== "" &&
+      (!/^\d+$/.test(formData.price_kgs) || Number(formData.price_kgs) < 0)
+    ) {
+      errors.price_kgs = t("Price format error");
+    }
+
+    return errors;
+  };
+
+  const mapBackendErrorToField = (message) => {
+    const lower = String(message || "").toLowerCase();
+
+    if (lower.includes("name")) return { name: t("Check Name") };
+    if (lower.includes("type_id")) return { type_id: t("Check Type") };
+    if (lower.includes("building_id")) return { building_id: t("Check Building") };
+    if (lower.includes("room_id")) return { room_id: t("Check Room") };
+    if (lower.includes("condition_id")) {
+      return { condition_id: t("Check Condition") };
+    }
+    if (lower.includes("purchase_date") || lower.includes("date")) {
+      return { purchase_date: t("Check Purchase Date") };
+    }
+    if (lower.includes("price_kgs") || lower.includes("price")) {
+      return { price_kgs: t("Check Price") };
+    }
+    if (lower.includes("manufacturer")) {
+      return { manufacturer: t("Check Manufacturer") };
+    }
+    if (lower.includes("model")) {
+      return { model: t("Check Model") };
+    }
+
+    return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!authReady) {
-      setError("Проверка сессии ещё не завершена. Попробуйте через секунду.");
+      setError(t("Session check not finished"));
       return;
     }
 
     if (!token) {
-      setError("Сессия истекла. Войдите снова.");
+      setError(t("Session expired"));
       return;
     }
 
-    if (!formData.name.trim()) {
-      setError("Введите название");
-      return;
-    }
+    const validationErrors = validateForm();
 
-    if (!formData.type_id || !formData.building_id || !formData.room_id) {
-      setError("Заполните тип, корпус и комнату");
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setError(t("Please fix form errors"));
       return;
     }
 
     try {
       setSaving(true);
       setError("");
+      setFieldErrors({});
 
       await updateFurniture(
         id,
@@ -223,24 +305,40 @@ function FurnitureEdit() {
       navigate("/furniture");
     } catch (err) {
       console.error(err);
-      setError(err.message || "Не удалось сохранить изменения");
+      const backendFieldError = mapBackendErrorToField(err.message);
+      if (backendFieldError) {
+        setFieldErrors(backendFieldError);
+      }
+      setError(err.message || t("Save changes failed"));
     } finally {
       setSaving(false);
     }
   };
 
-  const fieldClass =
-    "w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20";
+  const baseFieldClass =
+    "w-full rounded-[28px] border bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:bg-white/10 focus:ring-2";
+
+  const getFieldClass = (fieldName) =>
+    `${baseFieldClass} ${
+      fieldErrors[fieldName]
+        ? "border-red-400/40 focus:border-red-400/50 focus:ring-red-400/20"
+        : "border-white/10 focus:border-blue-400/40 focus:ring-blue-400/20"
+    }`;
 
   const readonlyClass =
     "w-full rounded-[28px] border border-white/10 bg-white/[0.05] px-5 py-4 text-white/80 outline-none backdrop-blur-xl";
+
+  const renderFieldError = (fieldName) =>
+    fieldErrors[fieldName] ? (
+      <div className="mt-2 text-sm text-red-300">{fieldErrors[fieldName]}</div>
+    ) : null;
 
   if (loading) {
     return (
       <div className="glass-strong rounded-[2rem] border border-white/10 p-8 text-white">
         <div className="flex items-center gap-3">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
-          <span>Загрузка...</span>
+          <span>{t("Loading...")}</span>
         </div>
       </div>
     );
@@ -262,7 +360,7 @@ function FurnitureEdit() {
 
         <div className="relative z-10 mb-8">
           <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-white/45">
-            Asset editor
+            {t("Asset editor")}
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -271,13 +369,12 @@ function FurnitureEdit() {
                 {t("Edit")} #{item.id}
               </h1>
               <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
-                Обновите данные мебели, включая модель, производителя, дату приобретения,
-                расположение, состояние, цену или фото.
+                {t("Edit asset description")}
               </p>
             </div>
 
             <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white/75">
-              <span className="text-white/45">Inventory Number:</span>{" "}
+              <span className="text-white/45">{t("Inventory Number")}:</span>{" "}
               <span className="font-medium text-white">
                 {item.inv_number || `INV-${item.id}`}
               </span>
@@ -315,30 +412,31 @@ function FurnitureEdit() {
         >
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Название
+              {t("Name")}
             </label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="Например: Стол преподавателя"
-              className={fieldClass}
+              placeholder={t("Example teacher desk")}
+              className={getFieldClass("name")}
             />
+            {renderFieldError("name")}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Тип
+              {t("Type")}
             </label>
             <select
               name="type_id"
               value={formData.type_id}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("type_id")}
             >
               <option value="" className="bg-slate-900">
-                Выберите тип
+                {t("Choose type")}
               </option>
               {typesList.map((type) => (
                 <option key={type.id} value={type.id} className="bg-slate-900">
@@ -346,75 +444,80 @@ function FurnitureEdit() {
                 </option>
               ))}
             </select>
+            {renderFieldError("type_id")}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Модель
+              {t("Model")}
             </label>
             <input
               type="text"
               name="model"
               value={formData.model}
               onChange={handleChange}
-              placeholder="Например: Office Pro 120"
-              className={fieldClass}
+              placeholder={t("Example office model")}
+              className={getFieldClass("model")}
             />
+            {renderFieldError("model")}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Производитель
+              {t("Manufacturer")}
             </label>
             <input
               type="text"
               name="manufacturer"
               value={formData.manufacturer}
               onChange={handleChange}
-              placeholder="Например: IKEA"
-              className={fieldClass}
+              placeholder={t("Example manufacturer")}
+              className={getFieldClass("manufacturer")}
             />
+            {renderFieldError("manufacturer")}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Дата приобретения
+              {t("Purchase Date")}
             </label>
             <input
               type="date"
               name="purchase_date"
               value={formData.purchase_date}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("purchase_date")}
             />
+            {renderFieldError("purchase_date")}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Цена (KGS)
+              {t("Price (KGS)")}
             </label>
             <input
               type="text"
               name="price_kgs"
               value={formData.price_kgs}
               onChange={handleChange}
-              placeholder="Например: 4500"
-              className={fieldClass}
+              placeholder="4500"
+              className={getFieldClass("price_kgs")}
             />
+            {renderFieldError("price_kgs")}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Корпус
+              {t("Building")}
             </label>
             <select
               name="building_id"
               value={formData.building_id}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("building_id")}
             >
               <option value="" className="bg-slate-900">
-                Выберите корпус
+                {t("Choose building")}
               </option>
               {buildingsList.map((building) => (
                 <option
@@ -426,20 +529,21 @@ function FurnitureEdit() {
                 </option>
               ))}
             </select>
+            {renderFieldError("building_id")}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Комната
+              {t("Room")}
             </label>
             <select
               name="room_id"
               value={formData.room_id}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("room_id")}
             >
               <option value="" className="bg-slate-900">
-                Выберите комнату
+                {t("Choose room")}
               </option>
               {filteredRooms.map((room) => (
                 <option key={room.id} value={room.id} className="bg-slate-900">
@@ -447,20 +551,21 @@ function FurnitureEdit() {
                 </option>
               ))}
             </select>
+            {renderFieldError("room_id")}
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <label className="block text-sm font-medium text-white/70">
-              Состояние
+              {t("Condition")}
             </label>
             <select
               name="condition_id"
               value={formData.condition_id}
               onChange={handleChange}
-              className={fieldClass}
+              className={getFieldClass("condition_id")}
             >
               <option value="" className="bg-slate-900">
-                Без состояния
+                {t("No condition")}
               </option>
               {conditionsList.map((c) => (
                 <option key={c.id} value={c.id} className="bg-slate-900">
@@ -468,6 +573,7 @@ function FurnitureEdit() {
                 </option>
               ))}
             </select>
+            {renderFieldError("condition_id")}
           </div>
 
           <div className="md:col-span-2">
@@ -475,15 +581,15 @@ function FurnitureEdit() {
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <label className="block text-sm font-medium text-white/75">
-                    Фото
+                    {t("Photo (JPG/PNG, max 5MB)")}
                   </label>
                   <p className="mt-1 text-xs text-white/45">
-                    Загрузите JPG или PNG до 5 MB
+                    {t("Edit photo upload help")}
                   </p>
                 </div>
 
                 {formData.photo && (
-                  <span className="liquid-badge">New file selected</span>
+                  <span className="liquid-badge">{t("New file selected")}</span>
                 )}
               </div>
 
@@ -491,25 +597,26 @@ function FurnitureEdit() {
                 type="file"
                 accept="image/jpeg,image/png"
                 onChange={handlePhotoChange}
-                className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-sm text-white/70 outline-none file:mr-4 file:rounded-full file:border-0 file:bg-blue-500/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-100 hover:bg-white/10"
+                className={getFieldClass("photo")}
               />
+              {renderFieldError("photo")}
 
               <div className="mt-6">
                 {preview ? (
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                     <img
                       src={preview}
-                      alt="Preview"
+                      alt={t("Preview")}
                       className="h-64 w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20 lg:w-72"
                     />
                     <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
                       <div className="mb-2 text-base font-medium text-white">
-                        Photo preview
+                        {t("Photo preview")}
                       </div>
                       <div>
                         {formData.photo
-                          ? "Новое фото будет загружено после сохранения."
-                          : "Текущее фото мебели отображается здесь."}
+                          ? t("New photo after save")
+                          : t("Current photo shown here")}
                       </div>
                     </div>
                   </div>
@@ -528,7 +635,7 @@ function FurnitureEdit() {
               disabled={saving}
               className="apple-btn apple-btn-primary w-full rounded-[1.25rem] px-6 py-4 text-sm font-semibold tracking-wide disabled:opacity-60 sm:w-auto sm:min-w-[190px]"
             >
-              {saving ? "Сохранение..." : t("Save changes")}
+              {saving ? t("Saving...") : t("Save changes")}
             </button>
 
             <button

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Html5Qrcode } from "html5-qrcode";
 import { getFurnitureById } from "../api";
 
@@ -23,6 +24,8 @@ function extractFurnitureIdFromQr(text) {
 const SAME_QR_COOLDOWN_MS = 3000;
 
 function ScanPage() {
+  const { t } = useTranslation();
+
   const scannerRef = useRef(null);
   const scannerElementId = "inventory-qr-reader";
   const isMountedRef = useRef(true);
@@ -125,16 +128,12 @@ function ScanPage() {
       if (state === 2 || state === 1) {
         try {
           await scanner.stop();
-        } catch {
-          // ignore stop errors when scanner is already stopping/stopped
-        }
+        } catch {}
       }
 
       try {
         await scanner.clear();
-      } catch {
-        // ignore clear errors
-      }
+      } catch {}
 
       if (scannerRef.current === scanner) {
         scannerRef.current = null;
@@ -161,7 +160,7 @@ function ScanPage() {
 
       const container = document.getElementById(scannerElementId);
       if (!container) {
-        setScanError("Контейнер сканера не найден. Обновите страницу.");
+        setScanError(t("Scanner container not found"));
         return;
       }
 
@@ -210,9 +209,7 @@ function ScanPage() {
       scannerRef.current = null;
 
       if (isMountedRef.current) {
-        setScanError(
-          "Не удалось запустить камеру. Проверь доступ к камере и HTTPS/localhost."
-        );
+        setScanError(t("Camera start failed"));
         setIsScannerRunning(false);
       }
     } finally {
@@ -243,7 +240,7 @@ function ScanPage() {
 
   const addReportRow = (row) => {
     if (seenKeysRef.current.has(row.uniqueKey)) {
-      setScanMessage("Этот объект уже был отсканирован.");
+      setScanMessage(t("Already scanned"));
       return false;
     }
 
@@ -278,14 +275,14 @@ function ScanPage() {
           scannedValue: normalizedValue,
           furnitureId: null,
           invNumber: "—",
-          name: "QR не распознан",
+          name: t("QR not recognized"),
           buildingName: "—",
           roomName: "—",
           scannedAt: new Date().toLocaleString(),
         });
 
         if (added) {
-          setScanError("QR не содержит корректный furniture id.");
+          setScanError(t("QR has no valid furniture id"));
         }
 
         return;
@@ -300,7 +297,7 @@ function ScanPage() {
           scannedValue: normalizedValue,
           furnitureId: item.id,
           invNumber: item.inv_number || `INV-${item.id}`,
-          name: item.name || "Без названия",
+          name: item.name || t("Untitled"),
           buildingName: item.building_name || "—",
           roomName: item.room_name || "—",
           scannedAt: new Date().toLocaleString(),
@@ -309,7 +306,7 @@ function ScanPage() {
         if (added) {
           playScanFeedback();
           setScanMessage(
-            `Найдено: ${item.inv_number || `INV-${item.id}`} — ${item.name}`
+            `${t("Found")}: ${item.inv_number || `INV-${item.id}`} — ${item.name}`
           );
         }
       } catch {
@@ -319,14 +316,14 @@ function ScanPage() {
           scannedValue: normalizedValue,
           furnitureId,
           invNumber: `INV-${furnitureId}`,
-          name: "Объект не найден",
+          name: t("Object not found"),
           buildingName: "—",
           roomName: "—",
           scannedAt: new Date().toLocaleString(),
         });
 
         if (added) {
-          setScanError(`Мебель с id ${furnitureId} не найдена.`);
+          setScanError(`${t("Furniture id not found")} ${furnitureId}.`);
         }
       }
     } finally {
@@ -366,14 +363,13 @@ function ScanPage() {
         <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-white/45">
-              Scan workflow
+              {t("Scan workflow")}
             </div>
             <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Inventory Audit / Scan Mode
+              {t("Inventory Audit / Scan Mode")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
-              Сканируй QR-коды мебели, проверяй наличие объектов и формируй
-              быстрый отчёт по результатам инвентаризации.
+              {t("Scan page description")}
             </p>
           </div>
 
@@ -384,14 +380,14 @@ function ScanPage() {
                 disabled={isStarting}
                 className="apple-btn apple-btn-primary rounded-[1.25rem] px-5 py-3 text-sm font-semibold disabled:opacity-60"
               >
-                {isStarting ? "Запуск камеры..." : "Запустить камеру"}
+                {isStarting ? t("Starting camera...") : t("Start Camera")}
               </button>
             ) : (
               <button
                 onClick={stopScanner}
                 className="apple-btn apple-btn-danger rounded-[1.25rem] px-5 py-3 text-sm font-semibold"
               >
-                Остановить камеру
+                {t("Stop Camera")}
               </button>
             )}
 
@@ -399,7 +395,7 @@ function ScanPage() {
               onClick={handleClearReport}
               className="apple-btn rounded-[1.25rem] px-5 py-3 text-sm font-medium text-white/85"
             >
-              Очистить отчёт
+              {t("Clear Report")}
             </button>
           </div>
         </div>
@@ -410,15 +406,15 @@ function ScanPage() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-white/75">
-                    QR Scanner
+                    {t("QR Scanner")}
                   </div>
                   <div className="mt-1 text-xs text-white/45">
-                    Используй камеру устройства для быстрого сканирования
+                    {t("Use device camera")}
                   </div>
                 </div>
 
                 <span className="liquid-badge">
-                  {isScannerRunning ? "Live" : "Idle"}
+                  {isScannerRunning ? t("Live") : t("Idle")}
                 </span>
               </div>
 
@@ -435,14 +431,14 @@ function ScanPage() {
                   type="text"
                   value={manualValue}
                   onChange={(e) => setManualValue(e.target.value)}
-                  placeholder="Вставь QR URL или furniture id вручную"
+                  placeholder={t("Paste QR manually")}
                   className="w-full rounded-[40px] border border-white/10 bg-white/[0.06] px-6 py-5 text-base text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
                 />
                 <button
                   type="submit"
                   className="apple-btn apple-btn-primary rounded-[1.25rem] px-5 py-4 text-sm font-semibold sm:min-w-[140px]"
                 >
-                  Проверить
+                  {t("Check")}
                 </button>
               </form>
 
@@ -464,30 +460,30 @@ function ScanPage() {
             <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl">
               <div className="mb-4">
                 <div className="text-sm font-medium text-white/75">
-                  Audit Summary
+                  {t("Audit Summary")}
                 </div>
                 <div className="mt-1 text-xs text-white/45">
-                  Быстрый обзор результатов сканирования
+                  {t("Quick scan summary")}
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] p-4">
-                  <div className="text-xs text-white/45">Всего</div>
+                  <div className="text-xs text-white/45">{t("Total")}</div>
                   <div className="mt-2 text-2xl font-semibold text-white">
                     {report.length}
                   </div>
                 </div>
 
                 <div className="rounded-[1.25rem] border border-green-400/15 bg-green-500/10 p-4">
-                  <div className="text-xs text-green-200/70">Найдено</div>
+                  <div className="text-xs text-green-200/70">{t("Found")}</div>
                   <div className="mt-2 text-2xl font-semibold text-white">
                     {foundCount}
                   </div>
                 </div>
 
                 <div className="rounded-[1.25rem] border border-red-400/15 bg-red-500/10 p-4">
-                  <div className="text-xs text-red-200/70">Не найдено</div>
+                  <div className="text-xs text-red-200/70">{t("Not Found")}</div>
                   <div className="mt-2 text-2xl font-semibold text-white">
                     {notFoundCount}
                   </div>
@@ -499,20 +495,22 @@ function ScanPage() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-white/75">
-                    Scan Report
+                    {t("Scan Report")}
                   </div>
                   <div className="mt-1 text-xs text-white/45">
-                    Последние отсканированные объекты
+                    {t("Last scanned objects")}
                   </div>
                 </div>
 
-                <span className="liquid-badge">{report.length} scans</span>
+                <span className="liquid-badge">
+                  {report.length} {t("Scans")}
+                </span>
               </div>
 
               <div className="max-h-[520px] space-y-3 overflow-auto pr-1">
                 {report.length === 0 ? (
                   <div className="grid min-h-[180px] place-items-center rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.03] text-center text-sm text-white/45">
-                    Сканов пока нет.
+                    {t("No scans yet")}
                   </div>
                 ) : (
                   report.map((row) => (
@@ -527,8 +525,8 @@ function ScanPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="text-sm font-semibold text-white">
                           {row.status === "found"
-                            ? "✓ Найдено"
-                            : "⚠ Не найдено"}
+                            ? `✓ ${t("Found")}`
+                            : `⚠ ${t("Not Found")}`}
                         </div>
                         <div className="text-xs text-white/45">
                           {row.scannedAt}
@@ -542,19 +540,19 @@ function ScanPage() {
                         </div>
 
                         <div>
-                          <span className="text-white/45">Название:</span>{" "}
+                          <span className="text-white/45">{t("Name")}:</span>{" "}
                           <span>{row.name}</span>
                         </div>
 
                         <div>
-                          <span className="text-white/45">Локация:</span>{" "}
+                          <span className="text-white/45">{t("Location")}:</span>{" "}
                           <span>
                             {row.buildingName} / {row.roomName}
                           </span>
                         </div>
 
                         <div className="break-all">
-                          <span className="text-white/45">Скан:</span>{" "}
+                          <span className="text-white/45">{t("Scan")}:</span>{" "}
                           <span>{row.scannedValue}</span>
                         </div>
                       </div>

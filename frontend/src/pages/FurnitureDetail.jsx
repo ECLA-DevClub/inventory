@@ -10,7 +10,7 @@ import {
 import { AuthContext } from "../context/AuthContext";
 
 function FurnitureDetail() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { role, token, authReady } = useContext(AuthContext);
@@ -24,6 +24,7 @@ function FurnitureDetail() {
 
   const canEdit = role === "admin" || role === "manager";
   const canDelete = role === "admin";
+  const locale = i18n.language?.startsWith("en") ? "en-US" : "ru-RU";
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +41,7 @@ function FurnitureDetail() {
       } catch (err) {
         console.error(err);
         if (!cancelled) {
-          setError("Не удалось загрузить мебель");
+          setError(t("Asset load failed"));
         }
       } finally {
         if (!cancelled) {
@@ -54,21 +55,21 @@ function FurnitureDetail() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   const openDeleteModal = () => {
     if (!canDelete) {
-      setError("У вас нет прав на удаление мебели");
+      setError(t("No delete permission"));
       return;
     }
 
     if (!authReady) {
-      setError("Проверка сессии ещё не завершена. Попробуйте ещё раз.");
+      setError(t("Session check not finished"));
       return;
     }
 
     if (!token) {
-      setError("Сессия истекла. Войдите снова.");
+      setError(t("Session expired"));
       return;
     }
 
@@ -95,7 +96,7 @@ function FurnitureDetail() {
     } catch (err) {
       console.error(err);
       setShowDeleteModal(false);
-      setError(err.message || "Не удалось удалить мебель");
+      setError(err.message || t("Delete failed"));
     } finally {
       setDeleting(false);
     }
@@ -111,7 +112,7 @@ function FurnitureDetail() {
       const res = await fetch(qrUrl);
 
       if (!res.ok) {
-        throw new Error("Не удалось скачать QR");
+        throw new Error(t("QR download failed"));
       }
 
       const blob = await res.blob();
@@ -127,7 +128,7 @@ function FurnitureDetail() {
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error(err);
-      setError("Не удалось скачать QR");
+      setError(t("QR download failed"));
     } finally {
       setDownloadingQr(false);
     }
@@ -138,7 +139,7 @@ function FurnitureDetail() {
       <div className="glass-strong rounded-[2rem] border border-white/10 p-8 text-white">
         <div className="flex items-center gap-3">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
-          <span>Загрузка...</span>
+          <span>{t("Loading...")}</span>
         </div>
       </div>
     );
@@ -192,8 +193,8 @@ function FurnitureDetail() {
                   <span className="liquid-badge">{item.type_name || "—"}</span>
                   <span className="liquid-badge">
                     {item.price_kgs
-                      ? `${Number(item.price_kgs).toLocaleString("ru-RU")} KGS`
-                      : "Цена не указана"}
+                      ? `${Number(item.price_kgs).toLocaleString(locale)} KGS`
+                      : t("Price not specified")}
                   </span>
                 </div>
 
@@ -225,19 +226,19 @@ function FurnitureDetail() {
 
                 <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
                   <div className="mb-3 text-sm font-medium text-white/55">
-                    Asset Value
+                    {t("Asset Value")}
                   </div>
 
                   <div className="text-2xl font-semibold text-yellow-200">
                     {item.price_kgs
-                      ? `${Number(item.price_kgs).toLocaleString("ru-RU")} KGS`
+                      ? `${Number(item.price_kgs).toLocaleString(locale)} KGS`
                       : "—"}
                   </div>
 
                   <div className="mt-2 text-sm text-white/60">
                     {item.price_kgs
-                      ? "Указанная стоимость этого актива"
-                      : "Стоимость для этого актива пока не указана"}
+                      ? t("Asset value specified")
+                      : t("Asset value missing")}
                   </div>
                 </div>
               </div>
@@ -245,18 +246,18 @@ function FurnitureDetail() {
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
                   <div className="mb-3 text-sm font-medium text-white/55">
-                    Производитель
+                    {t("Manufacturer")}
                   </div>
-                  <div className="text-xl font-semibold text-white break-words">
+                  <div className="break-words text-xl font-semibold text-white">
                     {item.manufacturer || "—"}
                   </div>
                 </div>
 
                 <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
                   <div className="mb-3 text-sm font-medium text-white/55">
-                    Модель
+                    {t("Model")}
                   </div>
-                  <div className="text-xl font-semibold text-white break-words">
+                  <div className="break-words text-xl font-semibold text-white">
                     {item.model || "—"}
                   </div>
                 </div>
@@ -264,7 +265,7 @@ function FurnitureDetail() {
 
               <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
                 <div className="mb-3 text-sm font-medium text-white/55">
-                  Дата приобретения
+                  {t("Purchase Date")}
                 </div>
                 <div className="text-xl font-semibold text-white">
                   {item.purchase_date || "—"}
@@ -273,7 +274,7 @@ function FurnitureDetail() {
 
               <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
                 <div className="mb-4 text-sm font-medium text-white/55">
-                  QR-код
+                  {t("QR Code")}
                 </div>
 
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -287,7 +288,7 @@ function FurnitureDetail() {
 
                   <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="text-sm leading-relaxed text-white/75">
-                      Отсканировав QR, можно открыть карточку мебели.
+                      {t("QR help text")}
                     </div>
 
                     <button
@@ -295,7 +296,7 @@ function FurnitureDetail() {
                       disabled={downloadingQr}
                       className="apple-btn apple-btn-primary w-full rounded-[1.25rem] px-5 py-3 text-sm font-semibold disabled:opacity-60 sm:w-auto"
                     >
-                      {downloadingQr ? "Скачивание..." : "Скачать QR"}
+                      {downloadingQr ? t("Downloading...") : t("Download QR")}
                     </button>
                   </div>
                 </div>
@@ -305,7 +306,7 @@ function FurnitureDetail() {
             <div className="min-w-0">
               <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6 xl:sticky xl:top-6">
                 <div className="mb-4 text-sm font-medium text-white/55">
-                  Actions
+                  {t("Actions")}
                 </div>
 
                 {error && (
@@ -326,7 +327,7 @@ function FurnitureDetail() {
                     to={`/furniture/${item.id}/label`}
                     className="w-full rounded-[1.25rem] bg-green-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-green-700"
                   >
-                    Распечатать этикетку
+                    {t("Print Label")}
                   </Link>
 
                   {canEdit && (
@@ -334,7 +335,7 @@ function FurnitureDetail() {
                       to={`/furniture/${item.id}/edit`}
                       className="w-full rounded-[1.25rem] bg-blue-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-blue-700"
                     >
-                      Изменить
+                      {t("Edit")}
                     </Link>
                   )}
 
@@ -344,71 +345,71 @@ function FurnitureDetail() {
                       disabled={deleting}
                       className="w-full rounded-[1.25rem] bg-red-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                     >
-                      {deleting ? "Удаление..." : t("Delete")}
+                      {deleting ? t("Deleting") : t("Delete")}
                     </button>
                   )}
                 </div>
 
                 <div className="mt-6 border-t border-white/10 pt-6">
                   <div className="text-sm font-medium text-white/55">
-                    Quick Info
+                    {t("Quick Info")}
                   </div>
 
                   <div className="mt-4 space-y-3 text-sm text-white/75">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Type</span>
+                      <span className="text-white/50">{t("Type")}</span>
                       <span className="text-right text-white">
                         {item.type_name || "—"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Manufacturer</span>
+                      <span className="text-white/50">{t("Manufacturer")}</span>
                       <span className="text-right text-white">
                         {item.manufacturer || "—"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Model</span>
+                      <span className="text-white/50">{t("Model")}</span>
                       <span className="text-right text-white">
                         {item.model || "—"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Purchase date</span>
+                      <span className="text-white/50">{t("Purchase Date")}</span>
                       <span className="text-right text-white">
                         {item.purchase_date || "—"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Condition</span>
+                      <span className="text-white/50">{t("Condition")}</span>
                       <span className="text-right text-white">
                         {item.condition_name || "—"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Price</span>
+                      <span className="text-white/50">{t("Price")}</span>
                       <span className="text-right text-white">
                         {item.price_kgs
-                          ? `${Number(item.price_kgs).toLocaleString("ru-RU")} KGS`
+                          ? `${Number(item.price_kgs).toLocaleString(locale)} KGS`
                           : "—"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Room</span>
+                      <span className="text-white/50">{t("Room")}</span>
                       <span className="text-right text-white">
                         {item.room_name || "—"}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-white/50">Role</span>
-                      <span className="text-right text-white capitalize">
+                      <span className="text-white/50">{t("Role")}</span>
+                      <span className="text-right capitalize text-white">
                         {role}
                       </span>
                     </div>
@@ -425,15 +426,15 @@ function FurnitureDetail() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-2 inline-flex items-center rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-red-200/80">
-                  Confirm delete
+                  {t("Confirm delete")}
                 </div>
 
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-                  Удалить мебель?
+                  {t("Delete furniture question")}
                 </h2>
 
                 <p className="mt-3 text-sm leading-relaxed text-white/65">
-                  Вы собираетесь удалить объект{" "}
+                  {t("Delete furniture message 1")}{" "}
                   <span className="font-medium text-white">
                     {item.inv_number ?? `INV-${item.id}`}
                   </span>{" "}
@@ -441,7 +442,7 @@ function FurnitureDetail() {
                 </p>
 
                 <p className="mt-2 text-sm text-red-200/80">
-                  Это действие удалит сам объект и его history.
+                  {t("Delete furniture message 2")}
                 </p>
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -451,7 +452,7 @@ function FurnitureDetail() {
                     disabled={deleting}
                     className="apple-btn w-full rounded-[1.25rem] px-5 py-3 text-sm font-medium text-white/85 sm:w-auto"
                   >
-                    Отмена
+                    {t("Cancel")}
                   </button>
 
                   <button
@@ -460,7 +461,7 @@ function FurnitureDetail() {
                     disabled={deleting}
                     className="w-full rounded-[1.25rem] bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60 sm:w-auto sm:min-w-[160px]"
                   >
-                    {deleting ? "Удаление..." : "Да, удалить"}
+                    {deleting ? t("Deleting") : t("Yes, delete")}
                   </button>
                 </div>
               </div>

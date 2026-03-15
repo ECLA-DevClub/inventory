@@ -42,10 +42,7 @@ function MainLayout() {
 
       <div className="relative z-10 px-4 pt-4 md:hidden">
         <div className="glass flex items-center justify-between rounded-[22px] px-4 py-4">
-          <button
-            onClick={() => setOpen(true)}
-            className="apple-btn !px-4 !py-2"
-          >
+          <button onClick={() => setOpen(true)} className="apple-btn !px-4 !py-2">
             ☰
           </button>
 
@@ -110,7 +107,7 @@ function MainLayout() {
                   onClick={() => setOpen(false)}
                   className={navLinkClass("/scan")}
                 >
-                  Scan Mode
+                  {t("Scan Mode")}
                 </Link>
 
                 <Link
@@ -118,14 +115,14 @@ function MainLayout() {
                   onClick={() => setOpen(false)}
                   className={navLinkClass("/audit")}
                 >
-                  Inventory Audit
+                  {t("Inventory Audit")}
                 </Link>
               </nav>
             </div>
 
             <div className="border-t border-white/10 pt-6">
               <div className="mb-3 text-xs uppercase tracking-[0.2em] text-white/45">
-                Language
+                {t("Language")}
               </div>
 
               <div className="mb-4 flex gap-2">
@@ -158,7 +155,7 @@ function MainLayout() {
           <div>
             <div className="mb-8">
               <div className="text-xs uppercase tracking-[0.25em] text-white/45">
-                Inventory System
+                {t("Inventory System")}
               </div>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight">
                 {t("Inventory")}
@@ -184,18 +181,18 @@ function MainLayout() {
               )}
 
               <Link to="/scan" className={navLinkClass("/scan")}>
-                Scan Mode
+                {t("Scan Mode")}
               </Link>
 
               <Link to="/audit" className={navLinkClass("/audit")}>
-                Inventory Audit
+                {t("Inventory Audit")}
               </Link>
             </nav>
           </div>
 
           <div className="border-t border-white/10 pt-6">
             <div className="mb-3 text-xs uppercase tracking-[0.2em] text-white/45">
-              Language
+              {t("Language")}
             </div>
 
             <div className="mb-4 flex gap-2">
