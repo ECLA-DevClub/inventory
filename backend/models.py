@@ -77,6 +77,10 @@ class Furniture(Base):
     price_kgs = Column(Integer, nullable=True)
     photo_url = Column(String, nullable=True)
 
+    last_condition_check_date = Column(Date, nullable=True)
+    next_condition_check_date = Column(Date, nullable=True)
+    condition_check_interval_days = Column(Integer, nullable=True)
+
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,

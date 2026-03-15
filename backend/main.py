@@ -59,6 +59,22 @@ def ensure_furniture_schema():
             conn.execute(text("ALTER TABLE furniture ADD COLUMN purchase_date DATE"))
             changed = True
 
+        # -------------------------
+        # INSPECTION SYSTEM
+        # -------------------------
+
+        if "last_condition_check_date" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN last_condition_check_date DATE"))
+            changed = True
+
+        if "next_condition_check_date" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN next_condition_check_date DATE"))
+            changed = True
+
+        if "condition_check_interval_days" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN condition_check_interval_days INTEGER"))
+            changed = True
+
         if changed:
             conn.commit()
 

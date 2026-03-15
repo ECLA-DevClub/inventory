@@ -1,6 +1,6 @@
 import io
 import os
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 from urllib.parse import quote, unquote
 from uuid import uuid4
@@ -177,6 +177,11 @@ def furniture_to_response(item: models.Furniture):
 
         "price_kgs": item.price_kgs,
         "photo_url": item.photo_url,
+
+        "last_condition_check_date": item.last_condition_check_date,
+        "next_condition_check_date": item.next_condition_check_date,
+        "condition_check_interval_days": item.condition_check_interval_days,
+
         "created_at": item.created_at,
     }
 
@@ -368,6 +373,9 @@ def create_furniture(
         manufacturer=item.manufacturer,
         purchase_date=item.purchase_date,
         price_kgs=item.price_kgs,
+        last_condition_check_date=item.last_condition_check_date,
+        next_condition_check_date=item.next_condition_check_date,
+        condition_check_interval_days=item.condition_check_interval_days,
     )
 
     db.add(db_item)
@@ -425,6 +433,10 @@ def update_furniture(
     item.manufacturer = item_data.manufacturer
     item.purchase_date = item_data.purchase_date
     item.price_kgs = item_data.price_kgs
+
+    item.last_condition_check_date = item_data.last_condition_check_date
+    item.next_condition_check_date = item_data.next_condition_check_date
+    item.condition_check_interval_days = item_data.condition_check_interval_days
 
     db.commit()
     db.refresh(item)
@@ -522,6 +534,48 @@ def upload_furniture_photo(
     return {
         "message": "Фото загружено",
         "photo_url": item.photo_url
+    }
+
+
+# =========================
+# MARK AS INSPECTED
+# =========================
+
+@router.post("/{furniture_id}/inspect")
+def mark_as_inspected(
+    furniture_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("admin", "manager")),
+):
+    item = db.query(models.Furniture).filter(models.Furniture.id == furniture_id).first()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Мебель не найдена")
+
+    today = date.today()
+    item.last_condition_check_date = today
+
+    if item.condition_check_interval_days:
+        item.next_condition_check_date = today + timedelta(days=item.condition_check_interval_days)
+
+    db.commit()
+    db.refresh(item)
+
+    add_history_record(
+        db=db,
+        furniture_id=item.id,
+        current_user=current_user,
+        action="inspection",
+        change_type="inspection",
+        reason="Inspection completed",
+        description="Проверка состояния мебели выполнена",
+    )
+    db.commit()
+
+    return {
+        "message": "Inspection recorded",
+        "last_check": item.last_condition_check_date,
+        "next_check": item.next_condition_check_date,
     }
 
 

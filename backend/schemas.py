@@ -72,6 +72,7 @@ class ConditionResponse(BaseModel):
 class FurnitureCreate(BaseModel):
     name: str
     inv_number: Optional[str] = None
+
     type_id: int
     building_id: int
     room_id: int
@@ -82,10 +83,16 @@ class FurnitureCreate(BaseModel):
     purchase_date: Optional[date] = None
 
     price_kgs: Optional[int] = None
+
+    # inspection system
+    last_condition_check_date: Optional[date] = None
+    next_condition_check_date: Optional[date] = None
+    condition_check_interval_days: Optional[int] = None
 
 
 class FurnitureUpdate(BaseModel):
     name: str
+
     type_id: int
     building_id: int
     room_id: int
@@ -96,6 +103,11 @@ class FurnitureUpdate(BaseModel):
     purchase_date: Optional[date] = None
 
     price_kgs: Optional[int] = None
+
+    # inspection system
+    last_condition_check_date: Optional[date] = None
+    next_condition_check_date: Optional[date] = None
+    condition_check_interval_days: Optional[int] = None
 
     change_reason: str
 
@@ -111,6 +123,7 @@ class FurnitureUpdate(BaseModel):
 class FurnitureMove(BaseModel):
     building_id: int
     room_id: int
+
     change_reason: str
 
     @field_validator("change_reason")
@@ -138,9 +151,14 @@ class FurnitureDisposalRequest(BaseModel):
     @classmethod
     def validate_disposal_type(cls, v: str) -> str:
         value = (v or "").strip().lower()
+
         allowed = {"writeoff", "disposal", "утилизация", "списание"}
+
         if value not in allowed:
-            raise ValueError("disposal_type must be one of: writeoff, disposal, списание, утилизация")
+            raise ValueError(
+                "disposal_type must be one of: writeoff, disposal, списание, утилизация"
+            )
+
         return value
 
 
@@ -167,6 +185,12 @@ class FurnitureResponse(BaseModel):
 
     price_kgs: Optional[int] = None
     photo_url: Optional[str] = None
+
+    # inspection system
+    last_condition_check_date: Optional[date] = None
+    next_condition_check_date: Optional[date] = None
+    condition_check_interval_days: Optional[int] = None
+
     created_at: datetime
 
     class Config:
@@ -177,12 +201,15 @@ class FurnitureResponse(BaseModel):
 class FurnitureHistoryResponse(BaseModel):
     id: int
     furniture_id: int
+
     performed_by_user_id: Optional[int] = None
     user_email: str
+
     action: str
     change_type: Optional[str] = None
     reason: Optional[str] = None
     description: Optional[str] = None
+
     created_at: datetime
 
     class Config:
