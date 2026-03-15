@@ -35,6 +35,7 @@ function FurnitureEdit() {
     manufacturer: "",
     purchase_date: "",
     price_kgs: "",
+    change_reason: "",
     photo: null,
   });
 
@@ -89,6 +90,7 @@ function FurnitureEdit() {
             itemData?.price_kgs === null || itemData?.price_kgs === undefined
               ? ""
               : String(itemData.price_kgs),
+          change_reason: "",
           photo: null,
         });
 
@@ -225,12 +227,21 @@ function FurnitureEdit() {
       errors.price_kgs = t("Price format error");
     }
 
+    if (!formData.change_reason.trim()) {
+      errors.change_reason = t("Change reason is required");
+    } else if (formData.change_reason.trim().length < 5) {
+      errors.change_reason = t("Change reason too short");
+    }
+
     return errors;
   };
 
   const mapBackendErrorToField = (message) => {
     const lower = String(message || "").toLowerCase();
 
+    if (lower.includes("change_reason")) {
+      return { change_reason: t("Change reason is required") };
+    }
     if (lower.includes("name")) return { name: t("Check Name") };
     if (lower.includes("type_id")) return { type_id: t("Check Type") };
     if (lower.includes("building_id")) return { building_id: t("Check Building") };
@@ -294,6 +305,7 @@ function FurnitureEdit() {
           purchase_date: formData.purchase_date || null,
           price_kgs:
             formData.price_kgs === "" ? null : Number(formData.price_kgs),
+          change_reason: formData.change_reason.trim(),
         },
         token
       );
@@ -574,6 +586,24 @@ function FurnitureEdit() {
               ))}
             </select>
             {renderFieldError("condition_id")}
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="block text-sm font-medium text-white/70">
+              {t("Reason for change")}
+            </label>
+            <textarea
+              name="change_reason"
+              value={formData.change_reason}
+              onChange={handleChange}
+              rows={4}
+              placeholder={t("Example moved to another room after audit")}
+              className={`${getFieldClass("change_reason")} resize-none`}
+            />
+            <div className="text-xs text-white/45">
+              {t("This field is required and will be saved in asset history")}
+            </div>
+            {renderFieldError("change_reason")}
           </div>
 
           <div className="md:col-span-2">
