@@ -1,12 +1,13 @@
 import io
 import os
 from typing import List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 from uuid import uuid4
 
 import boto3
 import qrcode
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
@@ -23,7 +24,7 @@ router = APIRouter(
 
 
 # =========================
-# S3 CONFIG
+# S3 / B2 CONFIG
 # =========================
 
 def get_s3_client():
@@ -62,7 +63,7 @@ def get_s3_public_base_url() -> str:
     if not public_base_url:
         raise HTTPException(
             status_code=500,
-            detail="S3_PUBLIC_BASE_URL не задан. Нужен публичный base URL для открытия фото."
+            detail="S3_PUBLIC_BASE_URL не задан"
         )
     return public_base_url
 
@@ -94,7 +95,7 @@ def build_s3_object_key(filename: Optional[str]) -> str:
 
 def build_public_photo_url(object_key: str) -> str:
     base = get_s3_public_base_url()
-    return f"{base}/{quote(object_key)}"
+    return f"{base}/{quote(object_key, safe='/')}"
 
 
 def extract_s3_key_from_photo_url(photo_url: Optional[str]) -> Optional[str]:
@@ -105,8 +106,9 @@ def extract_s3_key_from_photo_url(photo_url: Optional[str]) -> Optional[str]:
     if not public_base:
         return None
 
-    if photo_url.startswith(public_base + "/"):
-        return photo_url.replace(public_base + "/", "", 1)
+    prefix = public_base + "/"
+    if photo_url.startswith(prefix):
+        return unquote(photo_url.replace(prefix, "", 1))
 
     return None
 
@@ -122,12 +124,10 @@ def upload_file_to_s3(file: UploadFile) -> str:
 
     try:
         file.file.seek(0)
-        s3.upload_fileobj(
-            file.file,
-            bucket_name,
-            object_key,
-            ExtraArgs=extra_args if extra_args else None,
-        )
+        if extra_args:
+            s3.upload_fileobj(file.file, bucket_name, object_key, ExtraArgs=extra_args)
+        else:
+            s3.upload_fileobj(file.file, bucket_name, object_key)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка загрузки файла в S3: {str(e)}")
 
@@ -144,7 +144,6 @@ def delete_file_from_s3_by_photo_url(photo_url: Optional[str]) -> None:
         bucket_name = get_s3_bucket_name()
         s3.delete_object(Bucket=bucket_name, Key=object_key)
     except Exception:
-        # Удаление файла не должно ломать основную операцию
         pass
 
 
@@ -207,6 +206,37 @@ def get_all_furniture(db: Session = Depends(get_db)):
     )
 
     return [furniture_to_response(item) for item in items]
+
+
+# =========================
+# PHOTO PROXY (PRIVATE B2)
+# =========================
+
+@router.get("/photo-proxy/{object_key:path}")
+def get_photo_via_proxy(object_key: str):
+    s3 = get_s3_client()
+    bucket_name = get_s3_bucket_name()
+
+    try:
+        response = s3.get_object(Bucket=bucket_name, Key=object_key)
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code")
+        if error_code in {"NoSuchKey", "404"}:
+            raise HTTPException(status_code=404, detail="Фото не найдено")
+        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
+
+    content_type = response.get("ContentType") or "application/octet-stream"
+    body = response["Body"]
+
+    return StreamingResponse(
+        body,
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400"
+        }
+    )
 
 
 # =========================
