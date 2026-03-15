@@ -188,7 +188,7 @@ const resources = {
       "Start Camera": "Start Camera",
       "Stop Camera": "Stop Camera",
       "Clear Report": "Clear report",
-      "QR Scanner": "QR Scanner",
+      "QR Scanner": "QR-Scanner",
       "Use device camera": "Use the device camera for quick scanning",
       Live: "Live",
       Idle: "Idle",
@@ -238,7 +238,16 @@ const resources = {
 
       Print: "Print",
       "Inventory Label": "Inventory Label",
-      Photo: "Photo"
+      Photo: "Photo",
+
+      "Search assets placeholder": "Search: INV-0001, name, type, room, manufacturer...",
+      "All types": "All types",
+      "All buildings": "All buildings",
+      "All rooms": "All rooms",
+      "All conditions": "All conditions",
+      "Search by manufacturer": "Search by manufacturer",
+      "Reset filters": "Reset filters",
+      "Delete error": "Delete error"
     }
   },
 
@@ -478,7 +487,16 @@ const resources = {
 
       Print: "Печать",
       "Inventory Label": "Инвентарная этикетка",
-      Photo: "Фото"
+      Photo: "Фото",
+
+      "Search assets placeholder": "Поиск: INV-0001, название, тип, комната, производитель...",
+      "All types": "Все типы",
+      "All buildings": "Все корпуса",
+      "All rooms": "Все комнаты",
+      "All conditions": "Все состояния",
+      "Search by manufacturer": "Поиск по производителю",
+      "Reset filters": "Сбросить фильтры",
+      "Delete error": "Ошибка удаления"
     }
   }
 };

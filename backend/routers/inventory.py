@@ -150,7 +150,7 @@ def delete_file_from_s3_by_photo_url(photo_url: Optional[str]) -> None:
 
 
 # =========================
-# Helper
+# HELPERS
 # =========================
 
 def furniture_to_response(item: models.Furniture):
@@ -188,6 +188,27 @@ def build_furniture_public_url(furniture_id: int) -> str:
     ).rstrip("/")
 
     return f"{frontend_public_url}/furniture/{furniture_id}"
+
+
+def add_history_record(
+    db: Session,
+    furniture_id: int,
+    current_user: models.User,
+    action: str,
+    change_type: Optional[str] = None,
+    reason: Optional[str] = None,
+    description: Optional[str] = None,
+):
+    history = models.FurnitureHistory(
+        furniture_id=furniture_id,
+        performed_by_user_id=current_user.id,
+        user_email=current_user.email,
+        action=action,
+        change_type=change_type,
+        reason=reason.strip() if reason else None,
+        description=description,
+    )
+    db.add(history)
 
 
 # =========================
@@ -353,14 +374,15 @@ def create_furniture(
     db.commit()
     db.refresh(db_item)
 
-    history = models.FurnitureHistory(
+    add_history_record(
+        db=db,
         furniture_id=db_item.id,
-        user_email=current_user.email,
+        current_user=current_user,
         action="create",
-        description=f"Создана мебель {db_item.name}"
+        change_type="create",
+        reason=None,
+        description=f"Создана мебель {db_item.name}",
     )
-
-    db.add(history)
     db.commit()
 
     db_item = (
@@ -407,14 +429,15 @@ def update_furniture(
     db.commit()
     db.refresh(item)
 
-    history = models.FurnitureHistory(
+    add_history_record(
+        db=db,
         furniture_id=item.id,
-        user_email=current_user.email,
+        current_user=current_user,
         action="update",
-        description=f"Обновлена мебель {item.name}"
+        change_type="edit",
+        reason=item_data.change_reason,
+        description=f"Обновлена мебель {item.name}",
     )
-
-    db.add(history)
     db.commit()
 
     item = (
@@ -485,14 +508,15 @@ def upload_furniture_photo(
 
     delete_file_from_s3_by_photo_url(old_photo_url)
 
-    history = models.FurnitureHistory(
+    add_history_record(
+        db=db,
         furniture_id=item.id,
-        user_email=current_user.email,
+        current_user=current_user,
         action="update",
-        description="Обновлено фото мебели"
+        change_type="photo_update",
+        reason="Фото мебели обновлено",
+        description="Обновлено фото мебели",
     )
-
-    db.add(history)
     db.commit()
 
     return {
@@ -566,7 +590,15 @@ def move_furniture(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
 ):
-    item = db.query(models.Furniture).filter(models.Furniture.id == furniture_id).first()
+    item = (
+        db.query(models.Furniture)
+        .options(
+            joinedload(models.Furniture.building),
+            joinedload(models.Furniture.room),
+        )
+        .filter(models.Furniture.id == furniture_id)
+        .first()
+    )
 
     if not item:
         raise HTTPException(status_code=404, detail="Мебель не найдена")
@@ -580,6 +612,9 @@ def move_furniture(
     if not room:
         raise HTTPException(status_code=400, detail="Комната не найдена")
 
+    if room.building_id != building.id:
+        raise HTTPException(status_code=400, detail="Комната не принадлежит выбранному зданию")
+
     old_room = item.room.name if item.room else "—"
     old_building = item.building.name if item.building else "—"
 
@@ -589,18 +624,20 @@ def move_furniture(
     db.commit()
     db.refresh(item)
 
-    history = models.FurnitureHistory(
+    add_history_record(
+        db=db,
         furniture_id=item.id,
-        user_email=current_user.email,
+        current_user=current_user,
         action="move",
-        description=f"Перемещение из {old_building}/{old_room} в {building.name}/{room.name}"
+        change_type="move",
+        reason=move_data.change_reason,
+        description=f"Перемещение из {old_building}/{old_room} в {building.name}/{room.name}",
     )
-
-    db.add(history)
     db.commit()
 
     return {
         "message": "Мебель перемещена",
         "from": f"{old_building}/{old_room}",
-        "to": f"{building.name}/{room.name}"
+        "to": f"{building.name}/{room.name}",
+        "reason": move_data.change_reason,
     }

@@ -99,7 +99,7 @@ function FurnitureList() {
         roomId: item.room_id,
         condition: item.condition_name || "",
         conditionId: item.condition_id,
-        status: item.condition_name || "Active",
+        status: item.condition_name || t("Active"),
         manufacturer: item.manufacturer || "",
         purchaseDate: item.purchase_date || "",
         priceKgs: item.price_kgs ?? null,
@@ -174,7 +174,7 @@ function FurnitureList() {
       setDeleteTarget(null);
     } catch (err) {
       console.error("Ошибка удаления мебели:", err);
-      alert(err.message || "Ошибка удаления");
+      alert(err.message || t("Delete error"));
     } finally {
       setDeleteLoading(false);
     }
@@ -220,7 +220,7 @@ function FurnitureList() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search: INV-0001, name, type, room, manufacturer..."
+          placeholder={t("Search assets placeholder")}
           className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
         />
       </div>
@@ -233,7 +233,7 @@ function FurnitureList() {
             className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
           >
             <option value="" className="bg-slate-900 text-white">
-              Все типы
+              {t("All types")}
             </option>
             {types.map((type) => (
               <option
@@ -252,7 +252,7 @@ function FurnitureList() {
             className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
           >
             <option value="" className="bg-slate-900 text-white">
-              Все корпуса
+              {t("All buildings")}
             </option>
             {buildings.map((building) => (
               <option
@@ -271,7 +271,7 @@ function FurnitureList() {
             className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
           >
             <option value="" className="bg-slate-900 text-white">
-              Все комнаты
+              {t("All rooms")}
             </option>
             {availableRooms.map((room) => (
               <option
@@ -290,7 +290,7 @@ function FurnitureList() {
             className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
           >
             <option value="" className="bg-slate-900 text-white">
-              Все состояния
+              {t("All conditions")}
             </option>
             {conditions.map((condition) => (
               <option
@@ -306,7 +306,7 @@ function FurnitureList() {
           <input
             value={manufacturerSearch}
             onChange={(e) => setManufacturerSearch(e.target.value)}
-            placeholder="Поиск по производителю"
+            placeholder={t("Search by manufacturer")}
             className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/30 outline-none transition focus:border-blue-400/40 focus:bg-white/10"
           />
 
@@ -329,13 +329,13 @@ function FurnitureList() {
             onClick={resetFilters}
             className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white/85 transition hover:bg-white/[0.10]"
           >
-            Сбросить фильтры
+            {t("Reset filters")}
           </button>
         </div>
       </div>
 
       <div className="mt-3 text-sm text-white/50">
-        {listLoading ? "Загрузка..." : `Найдено: ${filtered.length}`}
+        {listLoading ? t("Loading") : `${t("Found")}: ${filtered.length}`}
       </div>
 
       <div className="mt-6 hidden overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl md:block">
@@ -560,7 +560,7 @@ function FurnitureList() {
             </div>
 
             <div className="mt-3 text-xs text-white/50">
-              Location: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
+              {t("Location")}: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
             </div>
 
             <div className="mt-2">

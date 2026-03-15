@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 # --- АУТЕНТИФИКАЦИЯ ---
@@ -97,10 +97,51 @@ class FurnitureUpdate(BaseModel):
 
     price_kgs: Optional[int] = None
 
+    change_reason: str
+
+    @field_validator("change_reason")
+    @classmethod
+    def validate_change_reason(cls, v: str) -> str:
+        value = (v or "").strip()
+        if len(value) < 5:
+            raise ValueError("Change reason must contain at least 5 characters")
+        return value
+
 
 class FurnitureMove(BaseModel):
     building_id: int
     room_id: int
+    change_reason: str
+
+    @field_validator("change_reason")
+    @classmethod
+    def validate_change_reason(cls, v: str) -> str:
+        value = (v or "").strip()
+        if len(value) < 5:
+            raise ValueError("Change reason must contain at least 5 characters")
+        return value
+
+
+class FurnitureDisposalRequest(BaseModel):
+    reason: str
+    disposal_type: str
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, v: str) -> str:
+        value = (v or "").strip()
+        if len(value) < 5:
+            raise ValueError("Reason must contain at least 5 characters")
+        return value
+
+    @field_validator("disposal_type")
+    @classmethod
+    def validate_disposal_type(cls, v: str) -> str:
+        value = (v or "").strip().lower()
+        allowed = {"writeoff", "disposal", "утилизация", "списание"}
+        if value not in allowed:
+            raise ValueError("disposal_type must be one of: writeoff, disposal, списание, утилизация")
+        return value
 
 
 class FurnitureResponse(BaseModel):
@@ -136,8 +177,11 @@ class FurnitureResponse(BaseModel):
 class FurnitureHistoryResponse(BaseModel):
     id: int
     furniture_id: int
+    performed_by_user_id: Optional[int] = None
     user_email: str
     action: str
+    change_type: Optional[str] = None
+    reason: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime
 

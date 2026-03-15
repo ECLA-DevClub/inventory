@@ -16,31 +16,99 @@ from routers.users import router as users_router
 models.Base.metadata.create_all(bind=engine)
 
 
-def ensure_sqlite_schema():
+def get_existing_columns(table_name: str) -> list[str]:
     db_url = str(engine.url)
 
-    if not db_url.startswith("sqlite"):
-        return
+    with engine.connect() as conn:
+        if db_url.startswith("sqlite"):
+            result = conn.execute(text(f"PRAGMA table_info({table_name})"))
+            return [row[1] for row in result.fetchall()]
+
+        result = conn.execute(
+            text(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = :table_name
+                """
+            ),
+            {"table_name": table_name},
+        )
+        return [row[0] for row in result.fetchall()]
+
+
+def ensure_furniture_schema():
+    columns = get_existing_columns("furniture")
 
     with engine.connect() as conn:
-        result = conn.execute(text("PRAGMA table_info(furniture)"))
-        columns = [row[1] for row in result.fetchall()]
+        changed = False
 
         if "price_kgs" not in columns:
             conn.execute(text("ALTER TABLE furniture ADD COLUMN price_kgs INTEGER"))
-            conn.commit()
+            changed = True
 
         if "model" not in columns:
             conn.execute(text("ALTER TABLE furniture ADD COLUMN model TEXT"))
-            conn.commit()
+            changed = True
 
         if "manufacturer" not in columns:
             conn.execute(text("ALTER TABLE furniture ADD COLUMN manufacturer TEXT"))
-            conn.commit()
+            changed = True
 
         if "purchase_date" not in columns:
             conn.execute(text("ALTER TABLE furniture ADD COLUMN purchase_date DATE"))
+            changed = True
+
+        if changed:
             conn.commit()
+
+
+def ensure_furniture_history_schema():
+    db_url = str(engine.url)
+    columns = get_existing_columns("furniture_history")
+
+    with engine.connect() as conn:
+        changed = False
+
+        if "performed_by_user_id" not in columns:
+            conn.execute(text("ALTER TABLE furniture_history ADD COLUMN performed_by_user_id INTEGER"))
+            changed = True
+
+        if "change_type" not in columns:
+            conn.execute(text("ALTER TABLE furniture_history ADD COLUMN change_type TEXT"))
+            changed = True
+
+        if "reason" not in columns:
+            conn.execute(text("ALTER TABLE furniture_history ADD COLUMN reason TEXT"))
+            changed = True
+
+        if changed:
+            conn.commit()
+
+        if not db_url.startswith("sqlite"):
+            fk_result = conn.execute(
+                text(
+                    """
+                    SELECT constraint_name
+                    FROM information_schema.table_constraints
+                    WHERE table_name = 'furniture_history'
+                      AND constraint_type = 'FOREIGN KEY'
+                      AND constraint_name = 'furniture_history_performed_by_user_id_fkey'
+                    """
+                )
+            ).fetchone()
+
+            if not fk_result:
+                conn.execute(
+                    text(
+                        """
+                        ALTER TABLE furniture_history
+                        ADD CONSTRAINT furniture_history_performed_by_user_id_fkey
+                        FOREIGN KEY (performed_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+                        """
+                    )
+                )
+                conn.commit()
 
 
 def seed_default_users():
@@ -162,7 +230,8 @@ def seed_reference_data():
         db.close()
 
 
-ensure_sqlite_schema()
+ensure_furniture_schema()
+ensure_furniture_history_schema()
 seed_default_users()
 seed_reference_data()
 
@@ -202,9 +271,6 @@ app.include_router(inventory_router)
 app.include_router(reference_router)
 app.include_router(users_router)
 
-# Оставляем static mount для совместимости со старыми фото,
-# которые уже могли сохраниться как /static/item_photos/...
-# Новые фото после правки inventory.py будут идти в S3.
 STATIC_DIR = "static"
 LEGACY_UPLOAD_DIR = os.path.join(STATIC_DIR, "item_photos")
 

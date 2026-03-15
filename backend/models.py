@@ -115,6 +115,7 @@ class Furniture(Base):
         back_populates="furniture",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        order_by="desc(FurnitureHistory.created_at)",
     )
 
 
@@ -127,9 +128,19 @@ class FurnitureHistory(Base):
         ForeignKey("furniture.id", ondelete="CASCADE"),
         nullable=False,
     )
+
+    performed_by_user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     user_email = Column(String, nullable=False)
+
     action = Column(String, nullable=False)
+    change_type = Column(String, nullable=True)
+    reason = Column(String, nullable=True)
     description = Column(String, nullable=True)
+
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -138,3 +149,4 @@ class FurnitureHistory(Base):
     )
 
     furniture = relationship("Furniture", back_populates="history")
+    performed_by = relationship("User")
