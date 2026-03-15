@@ -1,5 +1,6 @@
 import io
 import os
+from datetime import date
 from typing import List, Optional
 from urllib.parse import quote, unquote
 from uuid import uuid4
@@ -8,8 +9,9 @@ import boto3
 import qrcode
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -189,12 +191,22 @@ def build_furniture_public_url(furniture_id: int) -> str:
 
 
 # =========================
-# GET ALL
+# GET ALL + FILTERS
 # =========================
 
 @router.get("/", response_model=List[schemas.FurnitureResponse])
-def get_all_furniture(db: Session = Depends(get_db)):
-    items = (
+def get_all_furniture(
+    search: Optional[str] = Query(default=None),
+    type_id: Optional[int] = Query(default=None),
+    building_id: Optional[int] = Query(default=None),
+    room_id: Optional[int] = Query(default=None),
+    condition_id: Optional[int] = Query(default=None),
+    manufacturer: Optional[str] = Query(default=None),
+    purchase_date_from: Optional[date] = Query(default=None),
+    purchase_date_to: Optional[date] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    query = (
         db.query(models.Furniture)
         .options(
             joinedload(models.Furniture.furniture_type),
@@ -202,8 +214,54 @@ def get_all_furniture(db: Session = Depends(get_db)):
             joinedload(models.Furniture.room),
             joinedload(models.Furniture.condition),
         )
-        .all()
     )
+
+    if type_id is not None:
+        query = query.filter(models.Furniture.type_id == type_id)
+
+    if building_id is not None:
+        query = query.filter(models.Furniture.building_id == building_id)
+
+    if room_id is not None:
+        query = query.filter(models.Furniture.room_id == room_id)
+
+    if condition_id is not None:
+        query = query.filter(models.Furniture.condition_id == condition_id)
+
+    if manufacturer:
+        manufacturer_value = manufacturer.strip()
+        if manufacturer_value:
+            query = query.filter(models.Furniture.manufacturer.ilike(f"%{manufacturer_value}%"))
+
+    if purchase_date_from is not None:
+        query = query.filter(models.Furniture.purchase_date >= purchase_date_from)
+
+    if purchase_date_to is not None:
+        query = query.filter(models.Furniture.purchase_date <= purchase_date_to)
+
+    if search:
+        search_value = search.strip()
+        if search_value:
+            query = (
+                query.outerjoin(models.Furniture.furniture_type)
+                .outerjoin(models.Furniture.building)
+                .outerjoin(models.Furniture.room)
+                .outerjoin(models.Furniture.condition)
+                .filter(
+                    or_(
+                        models.Furniture.inv_number.ilike(f"%{search_value}%"),
+                        models.Furniture.name.ilike(f"%{search_value}%"),
+                        models.Furniture.model.ilike(f"%{search_value}%"),
+                        models.Furniture.manufacturer.ilike(f"%{search_value}%"),
+                        models.FurnitureType.name.ilike(f"%{search_value}%"),
+                        models.Building.name.ilike(f"%{search_value}%"),
+                        models.Room.name.ilike(f"%{search_value}%"),
+                        models.Condition.name.ilike(f"%{search_value}%"),
+                    )
+                )
+            )
+
+    items = query.order_by(models.Furniture.id.desc()).all()
 
     return [furniture_to_response(item) for item in items]
 

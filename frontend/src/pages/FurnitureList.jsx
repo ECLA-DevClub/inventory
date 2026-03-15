@@ -1,7 +1,15 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { deleteFurniture, getFurniture, resolveAssetUrl } from "../api";
+import {
+  deleteFurniture,
+  getBuildings,
+  getConditions,
+  getFurniture,
+  getRooms,
+  getTypes,
+  resolveAssetUrl,
+} from "../api";
 import { AuthContext } from "../context/AuthContext";
 
 function FurnitureList() {
@@ -10,10 +18,24 @@ function FurnitureList() {
   const { role, token } = useContext(AuthContext);
 
   const [furniture, setFurniture] = useState([]);
+  const [types, setTypes] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [conditions, setConditions] = useState([]);
+
   const [modalPhoto, setModalPhoto] = useState(null);
   const [search, setSearch] = useState("");
+  const [selectedTypeId, setSelectedTypeId] = useState("");
+  const [selectedBuildingId, setSelectedBuildingId] = useState("");
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+  const [selectedConditionId, setSelectedConditionId] = useState("");
+  const [manufacturerSearch, setManufacturerSearch] = useState("");
+  const [purchaseDateFrom, setPurchaseDateFrom] = useState("");
+  const [purchaseDateTo, setPurchaseDateTo] = useState("");
+
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
 
   const holdTimer = useRef(null);
 
@@ -21,27 +43,92 @@ function FurnitureList() {
   const canDeleteAssets = role === "admin";
 
   useEffect(() => {
-    getFurniture()
-      .then((data) => {
-        const mapped = data.map((item) => ({
-          id: item.id,
-          invNumber: item.inv_number ?? `INV-${item.id}`,
-          name: item.name,
-          type: item.type_name,
-          building: item.building_name,
-          room: item.room_name,
-          condition: item.condition_name || "",
-          status: item.condition_name || "Active",
-          priceKgs: item.price_kgs ?? null,
-          photo: resolveAssetUrl(item.photo_url),
-        }));
-
-        setFurniture(mapped);
+    Promise.all([getTypes(), getBuildings(), getRooms(), getConditions()])
+      .then(([typesData, buildingsData, roomsData, conditionsData]) => {
+        setTypes(typesData || []);
+        setBuildings(buildingsData || []);
+        setRooms(roomsData || []);
+        setConditions(conditionsData || []);
       })
       .catch((err) => {
-        console.error("Ошибка загрузки мебели:", err);
+        console.error("Ошибка загрузки фильтров:", err);
       });
   }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      loadFurniture();
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [
+    search,
+    selectedTypeId,
+    selectedBuildingId,
+    selectedRoomId,
+    selectedConditionId,
+    manufacturerSearch,
+    purchaseDateFrom,
+    purchaseDateTo,
+  ]);
+
+  const loadFurniture = async () => {
+    try {
+      setListLoading(true);
+
+      const data = await getFurniture({
+        search,
+        type_id: selectedTypeId,
+        building_id: selectedBuildingId,
+        room_id: selectedRoomId,
+        condition_id: selectedConditionId,
+        manufacturer: manufacturerSearch,
+        purchase_date_from: purchaseDateFrom,
+        purchase_date_to: purchaseDateTo,
+      });
+
+      const mapped = data.map((item) => ({
+        id: item.id,
+        invNumber: item.inv_number ?? `INV-${item.id}`,
+        name: item.name,
+        type: item.type_name,
+        typeId: item.type_id,
+        building: item.building_name,
+        buildingId: item.building_id,
+        room: item.room_name,
+        roomId: item.room_id,
+        condition: item.condition_name || "",
+        conditionId: item.condition_id,
+        status: item.condition_name || "Active",
+        manufacturer: item.manufacturer || "",
+        purchaseDate: item.purchase_date || "",
+        priceKgs: item.price_kgs ?? null,
+        photo: resolveAssetUrl(item.photo_url),
+      }));
+
+      setFurniture(mapped);
+    } catch (err) {
+      console.error("Ошибка загрузки мебели:", err);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  const availableRooms = useMemo(() => {
+    if (!selectedBuildingId) return rooms;
+    return rooms.filter(
+      (room) => String(room.building_id) === String(selectedBuildingId)
+    );
+  }, [rooms, selectedBuildingId]);
+
+  useEffect(() => {
+    if (
+      selectedRoomId &&
+      !availableRooms.some((room) => String(room.id) === String(selectedRoomId))
+    ) {
+      setSelectedRoomId("");
+    }
+  }, [availableRooms, selectedRoomId]);
 
   const formatInv = (inv) => {
     if (!inv) return { first: "", second: "" };
@@ -62,23 +149,7 @@ function FurnitureList() {
     return `${Number(value).toLocaleString("ru-RU")} KGS`;
   };
 
-  const filtered = useMemo(() => {
-    const s = search.trim().toLowerCase();
-
-    return furniture.filter((f) => {
-      return (
-        !s ||
-        String(f.invNumber || "").toLowerCase().includes(s) ||
-        String(f.name || "").toLowerCase().includes(s) ||
-        String(f.id || "").includes(s) ||
-        String(f.type || "").toLowerCase().includes(s) ||
-        String(f.building || "").toLowerCase().includes(s) ||
-        String(f.room || "").toLowerCase().includes(s) ||
-        String(f.status || "").toLowerCase().includes(s) ||
-        String(f.priceKgs || "").toLowerCase().includes(s)
-      );
-    });
-  }, [furniture, search]);
+  const filtered = furniture;
 
   const handleOpenDetail = (id) => {
     navigate(`/furniture/${id}`);
@@ -107,6 +178,17 @@ function FurnitureList() {
     } finally {
       setDeleteLoading(false);
     }
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setSelectedTypeId("");
+    setSelectedBuildingId("");
+    setSelectedRoomId("");
+    setSelectedConditionId("");
+    setManufacturerSearch("");
+    setPurchaseDateFrom("");
+    setPurchaseDateTo("");
   };
 
   return (
@@ -138,9 +220,122 @@ function FurnitureList() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search: INV-0001, name, type, room, price..."
+          placeholder="Search: INV-0001, name, type, room, manufacturer..."
           className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
         />
+      </div>
+
+      <div className="mt-4 rounded-[28px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <select
+            value={selectedTypeId}
+            onChange={(e) => setSelectedTypeId(e.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+          >
+            <option value="" className="bg-slate-900 text-white">
+              Все типы
+            </option>
+            {types.map((type) => (
+              <option
+                key={type.id}
+                value={type.id}
+                className="bg-slate-900 text-white"
+              >
+                {type.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedBuildingId}
+            onChange={(e) => setSelectedBuildingId(e.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+          >
+            <option value="" className="bg-slate-900 text-white">
+              Все корпуса
+            </option>
+            {buildings.map((building) => (
+              <option
+                key={building.id}
+                value={building.id}
+                className="bg-slate-900 text-white"
+              >
+                {building.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedRoomId}
+            onChange={(e) => setSelectedRoomId(e.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+          >
+            <option value="" className="bg-slate-900 text-white">
+              Все комнаты
+            </option>
+            {availableRooms.map((room) => (
+              <option
+                key={room.id}
+                value={room.id}
+                className="bg-slate-900 text-white"
+              >
+                {room.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedConditionId}
+            onChange={(e) => setSelectedConditionId(e.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+          >
+            <option value="" className="bg-slate-900 text-white">
+              Все состояния
+            </option>
+            {conditions.map((condition) => (
+              <option
+                key={condition.id}
+                value={condition.id}
+                className="bg-slate-900 text-white"
+              >
+                {condition.name}
+              </option>
+            ))}
+          </select>
+
+          <input
+            value={manufacturerSearch}
+            onChange={(e) => setManufacturerSearch(e.target.value)}
+            placeholder="Поиск по производителю"
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/30 outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+          />
+
+          <input
+            type="date"
+            value={purchaseDateFrom}
+            onChange={(e) => setPurchaseDateFrom(e.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+          />
+
+          <input
+            type="date"
+            value={purchaseDateTo}
+            onChange={(e) => setPurchaseDateTo(e.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+          />
+
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white/85 transition hover:bg-white/[0.10]"
+          >
+            Сбросить фильтры
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 text-sm text-white/50">
+        {listLoading ? "Загрузка..." : `Найдено: ${filtered.length}`}
       </div>
 
       <div className="mt-6 hidden overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl md:block">

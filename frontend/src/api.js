@@ -88,8 +88,19 @@ export async function registerUser(data) {
 
 /* ---------------- FURNITURE ---------------- */
 
-export async function getFurniture() {
-  const res = await fetch(`${API_URL}/furniture/`);
+export async function getFurniture(filters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      params.append(key, value);
+    }
+  });
+
+  const query = params.toString();
+  const url = `${API_URL}/furniture/${query ? `?${query}` : ""}`;
+
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Не удалось загрузить мебель");
   return res.json();
 }
