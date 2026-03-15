@@ -65,13 +65,93 @@ def seed_default_users():
                     role=user_data["role"],
                 )
                 db.add(new_user)
+
+        db.commit()
+    finally:
+        db.close()
+
+
+def seed_reference_data():
+    db = SessionLocal()
+    try:
+        default_types = [
+            "Стол",
+            "Стул",
+            "Шкаф",
+            "Парта",
+            "Компьютерный стол",
+            "Тумба",
+            "Доска",
+            "Проектор",
+        ]
+
+        default_conditions = [
+            "Отличное",
+            "Хорошее",
+            "Удовлетворительное",
+            "Требует ремонта",
+            "Списано",
+        ]
+
+        building_room_map = {
+            "4 этаж": ["401", "402", "403"],
+            "5 этаж": ["501", "502"],
+        }
+
+        for type_name in default_types:
+            exists = (
+                db.query(models.FurnitureType)
+                .filter(models.FurnitureType.name == type_name)
+                .first()
+            )
+            if not exists:
+                db.add(models.FurnitureType(name=type_name))
+
+        for condition_name in default_conditions:
+            exists = (
+                db.query(models.Condition)
+                .filter(models.Condition.name == condition_name)
+                .first()
+            )
+            if not exists:
+                db.add(models.Condition(name=condition_name))
+
+        db.commit()
+
+        for building_name, room_names in building_room_map.items():
+            building = (
+                db.query(models.Building)
+                .filter(models.Building.name == building_name)
+                .first()
+            )
+
+            if not building:
+                building = models.Building(name=building_name)
+                db.add(building)
                 db.commit()
+                db.refresh(building)
+
+            for room_name in room_names:
+                room_exists = (
+                    db.query(models.Room)
+                    .filter(
+                        models.Room.name == room_name,
+                        models.Room.building_id == building.id,
+                    )
+                    .first()
+                )
+
+                if not room_exists:
+                    db.add(models.Room(name=room_name, building_id=building.id))
+
+        db.commit()
     finally:
         db.close()
 
 
 ensure_sqlite_schema()
 seed_default_users()
+seed_reference_data()
 
 app = FastAPI(
     title="Inventory Management System",
