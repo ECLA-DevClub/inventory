@@ -22,6 +22,39 @@ const COLORS = {
   Unknown: "#60a5fa",
 };
 
+function getInspectionStats(items) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let overdue = 0;
+  let dueSoon = 0;
+  let notScheduled = 0;
+  let ok = 0;
+
+  for (const item of items) {
+    if (!item.next_condition_check_date) {
+      notScheduled += 1;
+      continue;
+    }
+
+    const nextDate = new Date(item.next_condition_check_date);
+    nextDate.setHours(0, 0, 0, 0);
+
+    const diffMs = nextDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      overdue += 1;
+    } else if (diffDays <= 7) {
+      dueSoon += 1;
+    } else {
+      ok += 1;
+    }
+  }
+
+  return { overdue, dueSoon, notScheduled, ok };
+}
+
 function Dashboard() {
   const { t, i18n } = useTranslation();
   const [furniture, setFurniture] = useState([]);
@@ -42,19 +75,19 @@ function Dashboard() {
     if (!conditionName) return t("Unknown");
 
     const map = {
-      "Хорошее": t("Good"),
+      Хорошее: t("Good"),
       "Требует ремонта": t("Needs Repair"),
-      "Списано": t("WrittenOff"),
+      Списано: t("WrittenOff"),
       "Не указано": t("Unknown"),
-      "Good": t("Good"),
+      Good: t("Good"),
       "Needs Repair": t("Needs Repair"),
-      "WrittenOff": t("WrittenOff"),
+      WrittenOff: t("WrittenOff"),
       "Written off": t("WrittenOff"),
-      "Unknown": t("Unknown"),
-      "Excellent": t("Excellent"),
-      "Fair": t("Fair"),
-      "Отличное": t("Excellent"),
-      "Удовлетворительное": t("Fair"),
+      Unknown: t("Unknown"),
+      Excellent: t("Excellent"),
+      Fair: t("Fair"),
+      Отличное: t("Excellent"),
+      Удовлетворительное: t("Fair"),
     };
 
     return map[conditionName] || conditionName;
@@ -112,6 +145,11 @@ function Dashboard() {
 
   const needsRepairPercent =
     total > 0 ? Math.round((needsRepair / total) * 100) : 0;
+
+  const inspectionStats = useMemo(
+    () => getInspectionStats(furniture),
+    [furniture]
+  );
 
   const conditionData = useMemo(() => {
     if (total === 0) return [];
@@ -213,6 +251,38 @@ function Dashboard() {
           </div>
           <div className="mt-3 text-sm text-white/60">
             {t("total written off")}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="glass liquid-card hover-lift interactive-panel rounded-[24px] border border-red-400/20 p-6">
+          <div className="text-sm text-white/50">Inspection Overdue</div>
+          <div className="mt-3 text-3xl font-semibold text-red-300 md:text-4xl">
+            {inspectionStats.overdue.toLocaleString(locale)}
+          </div>
+          <div className="mt-3 text-sm text-white/60">
+            Assets that should already be checked
+          </div>
+        </div>
+
+        <div className="glass liquid-card hover-lift interactive-panel rounded-[24px] border border-yellow-400/20 p-6">
+          <div className="text-sm text-white/50">Due Soon</div>
+          <div className="mt-3 text-3xl font-semibold text-yellow-200 md:text-4xl">
+            {inspectionStats.dueSoon.toLocaleString(locale)}
+          </div>
+          <div className="mt-3 text-sm text-white/60">
+            Inspections due within 7 days
+          </div>
+        </div>
+
+        <div className="glass liquid-card hover-lift interactive-panel rounded-[24px] p-6">
+          <div className="text-sm text-white/50">Not Scheduled</div>
+          <div className="mt-3 text-3xl font-semibold text-white md:text-4xl">
+            {inspectionStats.notScheduled.toLocaleString(locale)}
+          </div>
+          <div className="mt-3 text-sm text-white/60">
+            Assets without inspection dates
           </div>
         </div>
       </div>
@@ -339,22 +409,50 @@ function Dashboard() {
           </div>
 
           <div className="mt-8 border-t border-white/10 pt-6">
-            <div className="text-sm text-white/50">{t("System Health")}</div>
+            <div className="text-sm text-white/50">Inspection Overview</div>
 
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-white/70">{t("Assets loaded")}</span>
-                <span className="liquid-badge">{total}</span>
+                <span className="text-white/70">🟢 OK</span>
+                <span className="liquid-badge">{inspectionStats.ok}</span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-white/70">{t("Needs repair")}</span>
-                <span className="liquid-badge">{needsRepair}</span>
+                <span className="text-white/70">🟡 Due soon</span>
+                <span className="liquid-badge">{inspectionStats.dueSoon}</span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-white/70">{t("Written off")}</span>
-                <span className="liquid-badge">{writtenOff}</span>
+                <span className="text-white/70">🔴 Overdue</span>
+                <span className="liquid-badge">{inspectionStats.overdue}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">⚪ Not scheduled</span>
+                <span className="liquid-badge">
+                  {inspectionStats.notScheduled}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-8 border-t border-white/10 pt-6">
+              <div className="text-sm text-white/50">{t("System Health")}</div>
+
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70">{t("Assets loaded")}</span>
+                  <span className="liquid-badge">{total}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70">{t("Needs repair")}</span>
+                  <span className="liquid-badge">{needsRepair}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70">{t("Written off")}</span>
+                  <span className="liquid-badge">{writtenOff}</span>
+                </div>
               </div>
             </div>
           </div>

@@ -31,6 +31,9 @@ function FurnitureCreate() {
     manufacturer: "",
     purchase_date: "",
     price_kgs: "",
+    last_condition_check_date: "",
+    next_condition_check_date: "",
+    condition_check_interval_days: "",
     photo: null,
   });
 
@@ -47,6 +50,55 @@ function FurnitureCreate() {
       (room) => Number(room.building_id) === Number(formData.building_id)
     );
   }, [roomsList, formData.building_id]);
+
+  const inspectionMeta = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!formData.next_condition_check_date) {
+      return {
+        label: "Not scheduled",
+        icon: "⚪",
+        tone:
+          "border-white/10 bg-white/[0.04] text-white/75",
+        hint: "Set inspection interval or next inspection date",
+      };
+    }
+
+    const nextDate = new Date(formData.next_condition_check_date);
+    nextDate.setHours(0, 0, 0, 0);
+
+    const diffMs = nextDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return {
+        label: "Overdue",
+        icon: "🔴",
+        tone:
+          "border-red-400/25 bg-red-500/10 text-red-200",
+        hint: "Inspection date has already passed",
+      };
+    }
+
+    if (diffDays <= 7) {
+      return {
+        label: "Due soon",
+        icon: "🟡",
+        tone:
+          "border-yellow-400/25 bg-yellow-500/10 text-yellow-100",
+        hint: `Inspection due in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
+      };
+    }
+
+    return {
+      label: "OK",
+      icon: "🟢",
+      tone:
+        "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
+      hint: `Next inspection in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
+    };
+  }, [formData.next_condition_check_date]);
 
   useEffect(() => {
     const loadReferences = async () => {
@@ -105,6 +157,39 @@ function FurnitureCreate() {
     }
   }, [formData.building_id, filteredRooms, formData.room_id]);
 
+  useEffect(() => {
+    if (!formData.last_condition_check_date || !formData.condition_check_interval_days) {
+      return;
+    }
+
+    const interval = Number(formData.condition_check_interval_days);
+    if (!Number.isFinite(interval) || interval <= 0) {
+      return;
+    }
+
+    const baseDate = new Date(formData.last_condition_check_date);
+    if (Number.isNaN(baseDate.getTime())) {
+      return;
+    }
+
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(nextDate.getDate() + interval);
+
+    const yyyy = nextDate.getFullYear();
+    const mm = String(nextDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(nextDate.getDate()).padStart(2, "0");
+    const formatted = `${yyyy}-${mm}-${dd}`;
+
+    setFormData((prev) =>
+      prev.next_condition_check_date === formatted
+        ? prev
+        : { ...prev, next_condition_check_date: formatted }
+    );
+  }, [
+    formData.last_condition_check_date,
+    formData.condition_check_interval_days,
+  ]);
+
   const clearFieldError = (name) => {
     setFieldErrors((prev) => {
       if (!prev[name]) return prev;
@@ -133,6 +218,14 @@ function FurnitureCreate() {
       setFormData((prev) => ({
         ...prev,
         price_kgs: value.replace(/[^\d]/g, ""),
+      }));
+      return;
+    }
+
+    if (name === "condition_check_interval_days") {
+      setFormData((prev) => ({
+        ...prev,
+        condition_check_interval_days: value.replace(/[^\d]/g, ""),
       }));
       return;
     }
@@ -203,6 +296,31 @@ function FurnitureCreate() {
       errors.price_kgs = "Цена должна быть положительным числом";
     }
 
+    if (
+      formData.last_condition_check_date &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(formData.last_condition_check_date)
+    ) {
+      errors.last_condition_check_date =
+        "Дата проверки должна быть в формате YYYY-MM-DD";
+    }
+
+    if (
+      formData.next_condition_check_date &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(formData.next_condition_check_date)
+    ) {
+      errors.next_condition_check_date =
+        "Следующая проверка должна быть в формате YYYY-MM-DD";
+    }
+
+    if (
+      formData.condition_check_interval_days !== "" &&
+      (!/^\d+$/.test(formData.condition_check_interval_days) ||
+        Number(formData.condition_check_interval_days) <= 0)
+    ) {
+      errors.condition_check_interval_days =
+        "Интервал проверки должен быть положительным числом";
+    }
+
     return errors;
   };
 
@@ -245,6 +363,24 @@ function FurnitureCreate() {
       return { model: "Проверьте поле Модель" };
     }
 
+    if (lower.includes("last_condition_check_date")) {
+      return {
+        last_condition_check_date: "Проверьте дату последней проверки",
+      };
+    }
+
+    if (lower.includes("next_condition_check_date")) {
+      return {
+        next_condition_check_date: "Проверьте дату следующей проверки",
+      };
+    }
+
+    if (lower.includes("condition_check_interval_days")) {
+      return {
+        condition_check_interval_days: "Проверьте интервал проверки",
+      };
+    }
+
     return null;
   };
 
@@ -282,6 +418,14 @@ function FurnitureCreate() {
           purchase_date: formData.purchase_date || null,
           price_kgs:
             formData.price_kgs === "" ? null : Number(formData.price_kgs),
+          last_condition_check_date:
+            formData.last_condition_check_date || null,
+          next_condition_check_date:
+            formData.next_condition_check_date || null,
+          condition_check_interval_days:
+            formData.condition_check_interval_days === ""
+              ? null
+              : Number(formData.condition_check_interval_days),
         },
         token
       );
@@ -525,6 +669,76 @@ function FurnitureCreate() {
               ))}
             </select>
             {renderFieldError("condition_id")}
+          </div>
+
+          <div className="md:col-span-2">
+            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm font-medium text-white/75">
+                    Inspection Status
+                  </div>
+                  <div className="mt-1 text-xs text-white/45">
+                    Настрой интервал проверки состояния и система покажет статус.
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-[1rem] border px-4 py-3 text-sm font-medium ${inspectionMeta.tone}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{inspectionMeta.icon}</span>
+                    <span>{inspectionMeta.label}</span>
+                  </div>
+                  <div className="mt-1 text-xs opacity-80">{inspectionMeta.hint}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-white/70">
+                    Last inspection
+                  </label>
+                  <input
+                    type="date"
+                    name="last_condition_check_date"
+                    value={formData.last_condition_check_date}
+                    onChange={handleChange}
+                    className={getFieldClass("last_condition_check_date")}
+                  />
+                  {renderFieldError("last_condition_check_date")}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-white/70">
+                    Check every (days)
+                  </label>
+                  <input
+                    type="text"
+                    name="condition_check_interval_days"
+                    placeholder="Например: 180"
+                    value={formData.condition_check_interval_days}
+                    onChange={handleChange}
+                    className={getFieldClass("condition_check_interval_days")}
+                  />
+                  {renderFieldError("condition_check_interval_days")}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-white/70">
+                    Next inspection
+                  </label>
+                  <input
+                    type="date"
+                    name="next_condition_check_date"
+                    value={formData.next_condition_check_date}
+                    onChange={handleChange}
+                    className={getFieldClass("next_condition_check_date")}
+                  />
+                  {renderFieldError("next_condition_check_date")}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="md:col-span-2">

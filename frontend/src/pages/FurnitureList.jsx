@@ -12,6 +12,47 @@ import {
 } from "../api";
 import { AuthContext } from "../context/AuthContext";
 
+function getInspectionMeta(nextConditionCheckDate) {
+  if (!nextConditionCheckDate) {
+    return {
+      label: "Not scheduled",
+      icon: "⚪",
+      className: "border-white/10 bg-white/5 text-white/75",
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const nextDate = new Date(nextConditionCheckDate);
+  nextDate.setHours(0, 0, 0, 0);
+
+  const diffMs = nextDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return {
+      label: "Overdue",
+      icon: "🔴",
+      className: "border-red-400/20 bg-red-500/10 text-red-200",
+    };
+  }
+
+  if (diffDays <= 7) {
+    return {
+      label: "Due soon",
+      icon: "🟡",
+      className: "border-yellow-400/20 bg-yellow-500/10 text-yellow-100",
+    };
+  }
+
+  return {
+    label: "OK",
+    icon: "🟢",
+    className: "border-emerald-400/20 bg-emerald-500/10 text-emerald-100",
+  };
+}
+
 function FurnitureList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -87,24 +128,33 @@ function FurnitureList() {
         purchase_date_to: purchaseDateTo,
       });
 
-      const mapped = data.map((item) => ({
-        id: item.id,
-        invNumber: item.inv_number ?? `INV-${item.id}`,
-        name: item.name,
-        type: item.type_name,
-        typeId: item.type_id,
-        building: item.building_name,
-        buildingId: item.building_id,
-        room: item.room_name,
-        roomId: item.room_id,
-        condition: item.condition_name || "",
-        conditionId: item.condition_id,
-        status: item.condition_name || t("Active"),
-        manufacturer: item.manufacturer || "",
-        purchaseDate: item.purchase_date || "",
-        priceKgs: item.price_kgs ?? null,
-        photo: resolveAssetUrl(item.photo_url),
-      }));
+      const mapped = data.map((item) => {
+        const inspection = getInspectionMeta(item.next_condition_check_date);
+
+        return {
+          id: item.id,
+          invNumber: item.inv_number ?? `INV-${item.id}`,
+          name: item.name,
+          type: item.type_name,
+          typeId: item.type_id,
+          building: item.building_name,
+          buildingId: item.building_id,
+          room: item.room_name,
+          roomId: item.room_id,
+          condition: item.condition_name || "",
+          conditionId: item.condition_id,
+          status: item.condition_name || t("Active"),
+          manufacturer: item.manufacturer || "",
+          purchaseDate: item.purchase_date || "",
+          priceKgs: item.price_kgs ?? null,
+          photo: resolveAssetUrl(item.photo_url),
+          lastConditionCheckDate: item.last_condition_check_date || "",
+          nextConditionCheckDate: item.next_condition_check_date || "",
+          conditionCheckIntervalDays:
+            item.condition_check_interval_days ?? null,
+          inspection,
+        };
+      });
 
       setFurniture(mapped);
     } catch (err) {
@@ -348,6 +398,7 @@ function FurnitureList() {
               <th className="px-6 py-4 text-left font-medium">Price</th>
               <th className="px-6 py-4 text-left font-medium">{t("Location")}</th>
               <th className="px-6 py-4 text-left font-medium">{t("Status")}</th>
+              <th className="px-6 py-4 text-left font-medium">Inspection</th>
               {canManageAssets && (
                 <th className="px-6 py-4 text-left font-medium">{t("Actions")}</th>
               )}
@@ -434,6 +485,14 @@ function FurnitureList() {
                     {f.status}
                   </span>
                 </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
+                  >
+                    <span>{f.inspection.icon}</span>
+                    <span>{f.inspection.label}</span>
+                  </span>
+                </td>
 
                 {canManageAssets && (
                   <td
@@ -465,7 +524,7 @@ function FurnitureList() {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={canManageAssets ? 7 : 6}
+                  colSpan={canManageAssets ? 8 : 7}
                   className="px-6 py-10 text-center text-white/55"
                 >
                   {t("No results")}
@@ -563,9 +622,16 @@ function FurnitureList() {
               {t("Location")}: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
             </div>
 
-            <div className="mt-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
                 {f.status}
+              </span>
+
+              <span
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
+              >
+                <span>{f.inspection.icon}</span>
+                <span>{f.inspection.label}</span>
               </span>
             </div>
 

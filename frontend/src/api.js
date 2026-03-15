@@ -35,9 +35,7 @@ function normalizeErrorDetail(detail) {
 async function parseError(res, fallbackMessage) {
   const err = await res.json().catch(() => ({}));
   const normalized =
-    normalizeErrorDetail(err?.detail) ||
-    err?.message ||
-    fallbackMessage;
+    normalizeErrorDetail(err?.detail) || err?.message || fallbackMessage;
 
   throw new Error(normalized);
 }
@@ -200,6 +198,21 @@ export async function moveFurniture(id, data, token) {
 
   if (!res.ok) {
     await parseError(res, "Ошибка перемещения");
+  }
+
+  return res.json();
+}
+
+export async function markFurnitureAsInspected(id, token) {
+  const res = await fetch(`${API_URL}/furniture/${id}/inspect`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка отметки проверки");
   }
 
   return res.json();
