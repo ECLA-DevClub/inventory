@@ -35,6 +35,9 @@ function FurnitureEdit() {
     manufacturer: "",
     purchase_date: "",
     price_kgs: "",
+    last_condition_check_date: "",
+    next_condition_check_date: "",
+    condition_check_interval_days: "",
     change_reason: "",
     photo: null,
   });
@@ -51,6 +54,58 @@ function FurnitureEdit() {
       (room) => Number(room.building_id) === Number(formData.building_id)
     );
   }, [roomsList, formData.building_id]);
+
+  const qrUrl = useMemo(() => {
+    const apiBase = (
+      import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
+    ).replace(/\/+$/, "");
+    return `${apiBase}/furniture/${id}/qr`;
+  }, [id]);
+
+  const inspectionMeta = useMemo(() => {
+    if (!formData.next_condition_check_date) {
+      return {
+        label: "Not scheduled",
+        icon: "⚪",
+        tone: "border-white/10 bg-white/[0.04] text-white/75",
+        hint: "Set interval or next inspection date",
+      };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const nextDate = new Date(formData.next_condition_check_date);
+    nextDate.setHours(0, 0, 0, 0);
+
+    const diffMs = nextDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return {
+        label: "Overdue",
+        icon: "🔴",
+        tone: "border-red-400/25 bg-red-500/10 text-red-200",
+        hint: "Inspection date has already passed",
+      };
+    }
+
+    if (diffDays <= 7) {
+      return {
+        label: "Due soon",
+        icon: "🟡",
+        tone: "border-yellow-400/25 bg-yellow-500/10 text-yellow-100",
+        hint: `Inspection due in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
+      };
+    }
+
+    return {
+      label: "OK",
+      icon: "🟢",
+      tone: "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
+      hint: `Next inspection in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
+    };
+  }, [formData.next_condition_check_date]);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +145,13 @@ function FurnitureEdit() {
             itemData?.price_kgs === null || itemData?.price_kgs === undefined
               ? ""
               : String(itemData.price_kgs),
+          last_condition_check_date: itemData?.last_condition_check_date || "",
+          next_condition_check_date: itemData?.next_condition_check_date || "",
+          condition_check_interval_days:
+            itemData?.condition_check_interval_days === null ||
+            itemData?.condition_check_interval_days === undefined
+              ? ""
+              : String(itemData.condition_check_interval_days),
           change_reason: "",
           photo: null,
         });
@@ -129,6 +191,39 @@ function FurnitureEdit() {
     }
   }, [formData.building_id, filteredRooms, formData.room_id]);
 
+  useEffect(() => {
+    if (!formData.last_condition_check_date || !formData.condition_check_interval_days) {
+      return;
+    }
+
+    const interval = Number(formData.condition_check_interval_days);
+    if (!Number.isFinite(interval) || interval <= 0) {
+      return;
+    }
+
+    const baseDate = new Date(formData.last_condition_check_date);
+    if (Number.isNaN(baseDate.getTime())) {
+      return;
+    }
+
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(nextDate.getDate() + interval);
+
+    const yyyy = nextDate.getFullYear();
+    const mm = String(nextDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(nextDate.getDate()).padStart(2, "0");
+    const formatted = `${yyyy}-${mm}-${dd}`;
+
+    setFormData((prev) =>
+      prev.next_condition_check_date === formatted
+        ? prev
+        : { ...prev, next_condition_check_date: formatted }
+    );
+  }, [
+    formData.last_condition_check_date,
+    formData.condition_check_interval_days,
+  ]);
+
   const clearFieldError = (name) => {
     setFieldErrors((prev) => {
       if (!prev[name]) return prev;
@@ -157,6 +252,14 @@ function FurnitureEdit() {
       setFormData((prev) => ({
         ...prev,
         price_kgs: value.replace(/[^\d]/g, ""),
+      }));
+      return;
+    }
+
+    if (name === "condition_check_interval_days") {
+      setFormData((prev) => ({
+        ...prev,
+        condition_check_interval_days: value.replace(/[^\d]/g, ""),
       }));
       return;
     }
@@ -227,6 +330,28 @@ function FurnitureEdit() {
       errors.price_kgs = t("Price format error");
     }
 
+    if (
+      formData.last_condition_check_date &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(formData.last_condition_check_date)
+    ) {
+      errors.last_condition_check_date = "Use YYYY-MM-DD";
+    }
+
+    if (
+      formData.next_condition_check_date &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(formData.next_condition_check_date)
+    ) {
+      errors.next_condition_check_date = "Use YYYY-MM-DD";
+    }
+
+    if (
+      formData.condition_check_interval_days !== "" &&
+      (!/^\d+$/.test(formData.condition_check_interval_days) ||
+        Number(formData.condition_check_interval_days) <= 0)
+    ) {
+      errors.condition_check_interval_days = "Enter a positive number";
+    }
+
     if (!formData.change_reason.trim()) {
       errors.change_reason = t("Change reason is required");
     } else if (formData.change_reason.trim().length < 5) {
@@ -241,6 +366,15 @@ function FurnitureEdit() {
 
     if (lower.includes("change_reason")) {
       return { change_reason: t("Change reason is required") };
+    }
+    if (lower.includes("last_condition_check_date")) {
+      return { last_condition_check_date: "Check last inspection date" };
+    }
+    if (lower.includes("next_condition_check_date")) {
+      return { next_condition_check_date: "Check next inspection date" };
+    }
+    if (lower.includes("condition_check_interval_days")) {
+      return { condition_check_interval_days: "Check inspection interval" };
     }
     if (lower.includes("name")) return { name: t("Check Name") };
     if (lower.includes("type_id")) return { type_id: t("Check Type") };
@@ -305,6 +439,14 @@ function FurnitureEdit() {
           purchase_date: formData.purchase_date || null,
           price_kgs:
             formData.price_kgs === "" ? null : Number(formData.price_kgs),
+          last_condition_check_date:
+            formData.last_condition_check_date || null,
+          next_condition_check_date:
+            formData.next_condition_check_date || null,
+          condition_check_interval_days:
+            formData.condition_check_interval_days === ""
+              ? null
+              : Number(formData.condition_check_interval_days),
           change_reason: formData.change_reason.trim(),
         },
         token
@@ -588,6 +730,78 @@ function FurnitureEdit() {
             {renderFieldError("condition_id")}
           </div>
 
+          <div className="md:col-span-2">
+            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-sm font-medium text-white/75">
+                    Inspection Status
+                  </div>
+                  <div className="mt-1 text-xs text-white/45">
+                    Adjust condition checks and upcoming inspection dates.
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-[1rem] border px-4 py-3 text-sm font-medium ${inspectionMeta.tone}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{inspectionMeta.icon}</span>
+                    <span>{inspectionMeta.label}</span>
+                  </div>
+                  <div className="mt-1 text-xs opacity-80">
+                    {inspectionMeta.hint}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-white/70">
+                    Last inspection
+                  </label>
+                  <input
+                    type="date"
+                    name="last_condition_check_date"
+                    value={formData.last_condition_check_date}
+                    onChange={handleChange}
+                    className={getFieldClass("last_condition_check_date")}
+                  />
+                  {renderFieldError("last_condition_check_date")}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-white/70">
+                    Check every (days)
+                  </label>
+                  <input
+                    type="text"
+                    name="condition_check_interval_days"
+                    value={formData.condition_check_interval_days}
+                    onChange={handleChange}
+                    placeholder="180"
+                    className={getFieldClass("condition_check_interval_days")}
+                  />
+                  {renderFieldError("condition_check_interval_days")}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-white/70">
+                    Next inspection
+                  </label>
+                  <input
+                    type="date"
+                    name="next_condition_check_date"
+                    value={formData.next_condition_check_date}
+                    onChange={handleChange}
+                    className={getFieldClass("next_condition_check_date")}
+                  />
+                  {renderFieldError("next_condition_check_date")}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-2 md:col-span-2">
             <label className="block text-sm font-medium text-white/70">
               {t("Reason for change")}
@@ -631,30 +845,49 @@ function FurnitureEdit() {
               />
               {renderFieldError("photo")}
 
-              <div className="mt-6">
-                {preview ? (
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                    <img
-                      src={preview}
-                      alt={t("Preview")}
-                      className="h-64 w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20 lg:w-72"
-                    />
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
-                      <div className="mb-2 text-base font-medium text-white">
-                        {t("Photo preview")}
-                      </div>
-                      <div>
-                        {formData.photo
-                          ? t("New photo after save")
-                          : t("Current photo shown here")}
+              <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <div>
+                  {preview ? (
+                    <div className="flex flex-col gap-4">
+                      <img
+                        src={preview}
+                        alt={t("Preview")}
+                        className="h-64 w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20"
+                      />
+                      <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
+                        <div className="mb-2 text-base font-medium text-white">
+                          {t("Photo preview")}
+                        </div>
+                        <div>
+                          {formData.photo
+                            ? t("New photo after save")
+                            : t("Current photo shown here")}
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    <div className="grid h-64 place-items-center rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.04] text-white/40">
+                      {t("No photo")}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <div className="grid h-64 place-items-center rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 shadow-lg shadow-black/10">
+                    <img
+                      src={qrUrl}
+                      alt={t("QR code")}
+                      className="h-full max-h-56 w-full max-w-[240px] rounded-[1rem] bg-white p-3 object-contain"
+                    />
                   </div>
-                ) : (
-                  <div className="grid h-64 place-items-center rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.04] text-white/40">
-                    {t("No photo")}
+
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
+                    <div className="mb-2 text-base font-medium text-white">
+                      {t("QR code")}
+                    </div>
+                    <div>{t("QR leads to the asset detail page")}</div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -682,4 +915,4 @@ function FurnitureEdit() {
   );
 }
 
-export default FurnitureEdit; 
+export default FurnitureEdit;
