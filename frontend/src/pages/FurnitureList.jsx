@@ -242,23 +242,24 @@ function FurnitureList() {
   };
 
   const filterFieldClass =
-  "w-full rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-blue-400/40 focus:bg-white/10 sm:rounded-[20px] sm:px-4 sm:py-3";
+    "w-full rounded-[16px] border border-white/10 bg-white/[0.06] px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-blue-400/40 focus:bg-white/10 sm:rounded-[18px] sm:px-4 sm:py-3";
+
   const filterButtonClass =
-  "w-full rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm text-white/85 transition hover:bg-white/[0.10] sm:rounded-[20px] sm:px-4 sm:py-3";
+    "w-full rounded-[16px] border border-white/10 bg-white/[0.06] px-3.5 py-2.5 text-sm text-white/85 transition hover:bg-white/[0.10] sm:rounded-[18px] sm:px-4 sm:py-3";
 
   return (
     <div className="animate-fadeIn">
-      <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-3 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
             {t("Assets")}
           </h1>
-          <div className="mt-2 text-sm text-white/55">
+          <div className="mt-1.5 text-sm text-white/55">
             {t("Search assets text")}
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
           <div className="text-sm text-white/60">
             {t("Showing")} <span className="text-white">{filtered.length}</span>
           </div>
@@ -266,23 +267,25 @@ function FurnitureList() {
           {canManageAssets && (
             <Link
               to="/furniture/create"
-              className="apple-btn apple-btn-primary w-full px-4 py-3 text-center text-sm sm:w-auto sm:px-5 sm:py-3.5"            >
+              className="apple-btn apple-btn-primary w-full px-4 py-2.5 text-center text-sm sm:w-auto sm:px-5 sm:py-3"
+            >
               {t("New Asset")}
             </Link>
           )}
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-3">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("Search assets placeholder")}
-          className="w-full rounded-[20px] border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20 sm:rounded-[24px] sm:px-4 sm:py-3.5 sm:text-base"        />
+          className="w-full rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20 sm:rounded-[22px] sm:px-4 sm:py-3 sm:text-base"
+        />
       </div>
 
-      <div className="mt-4 rounded-[20px] border border-white/10 bg-white/[0.05] p-2.5 backdrop-blur-xl sm:rounded-[24px] sm:p-3">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-3 rounded-[18px] border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl sm:mt-4 sm:rounded-[22px] sm:p-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <select
             value={selectedTypeId}
             onChange={(e) => setSelectedTypeId(e.target.value)}
@@ -543,20 +546,20 @@ function FurnitureList() {
         </table>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:hidden">
+      <div className="mt-5 grid grid-cols-1 gap-3 lg:hidden">
         {filtered.map((f) => (
           <Link
             key={f.id}
             to={`/furniture/${f.id}`}
-            className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl transition hover:bg-white/5 sm:p-5"
+            className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] p-3.5 backdrop-blur-xl transition hover:bg-white/5 sm:rounded-[1.5rem] sm:p-5"
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
               <div className="shrink-0">
                 {f.photo ? (
                   <img
                     src={f.photo}
                     alt={f.name || f.invNumber}
-                    className="h-40 w-full cursor-zoom-in rounded-[1.25rem] object-cover sm:h-28 sm:w-28"
+                    className="h-32 w-full cursor-zoom-in rounded-[1rem] object-cover sm:h-28 sm:w-28 sm:rounded-[1.25rem]"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -586,7 +589,7 @@ function FurnitureList() {
                     }}
                   />
                 ) : (
-                  <div className="grid h-40 w-full place-items-center rounded-[1.25rem] bg-white/5 text-xs text-white/50 sm:h-28 sm:w-28">
+                  <div className="grid h-32 w-full place-items-center rounded-[1rem] bg-white/5 text-xs text-white/50 sm:h-28 sm:w-28 sm:rounded-[1.25rem]">
                     {t("No photo")}
                   </div>
                 )}
@@ -609,7 +612,7 @@ function FurnitureList() {
                   })()}
                 </div>
 
-                <div className="mt-3 break-words text-lg font-medium text-white">
+                <div className="mt-2.5 break-words text-base font-medium text-white sm:mt-3 sm:text-lg">
                   {f.name}
                 </div>
 
@@ -617,15 +620,15 @@ function FurnitureList() {
                   {f.type || "—"}
                 </div>
 
-                <div className="mt-3 text-sm text-yellow-200">
+                <div className="mt-2.5 text-sm text-yellow-200">
                   {formatPrice(f.priceKgs)}
                 </div>
 
-                <div className="mt-3 text-sm text-white/55">
+                <div className="mt-2.5 text-sm text-white/55">
                   {t("Location")}: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-2">
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
                     {f.status}
                   </span>
@@ -639,7 +642,7 @@ function FurnitureList() {
                 </div>
 
                 {canManageAssets && (
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <button
                       onClick={(e) => {
                         e.preventDefault();
