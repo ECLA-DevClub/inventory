@@ -242,9 +242,9 @@ function FurnitureList() {
   };
 
   const filterFieldClass =
-    "w-full rounded-[22px] border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-blue-400/40 focus:bg-white/10 sm:rounded-2xl sm:px-4 sm:py-3.5";
+  "w-full rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-blue-400/40 focus:bg-white/10 sm:rounded-[20px] sm:px-4 sm:py-3";
   const filterButtonClass =
-    "w-full rounded-[22px] border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white/85 transition hover:bg-white/[0.10] sm:rounded-2xl sm:px-4 sm:py-3.5";
+  "w-full rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm text-white/85 transition hover:bg-white/[0.10] sm:rounded-[20px] sm:px-4 sm:py-3";
 
   return (
     <div className="animate-fadeIn">
@@ -266,8 +266,7 @@ function FurnitureList() {
           {canManageAssets && (
             <Link
               to="/furniture/create"
-              className="apple-btn apple-btn-primary w-full text-center sm:w-auto"
-            >
+              className="apple-btn apple-btn-primary w-full px-4 py-3 text-center text-sm sm:w-auto sm:px-5 sm:py-3.5"            >
               {t("New Asset")}
             </Link>
           )}
@@ -279,12 +278,11 @@ function FurnitureList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("Search assets placeholder")}
-          className="w-full rounded-[24px] border border-white/10 bg-white/[0.06] px-4 py-3.5 text-sm text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20 sm:rounded-[28px] sm:px-5 sm:py-4 sm:text-base"
-        />
+          className="w-full rounded-[20px] border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20 sm:rounded-[24px] sm:px-4 sm:py-3.5 sm:text-base"        />
       </div>
 
-      <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl sm:rounded-[28px] sm:p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 rounded-[20px] border border-white/10 bg-white/[0.05] p-2.5 backdrop-blur-xl sm:rounded-[24px] sm:p-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
           <select
             value={selectedTypeId}
             onChange={(e) => setSelectedTypeId(e.target.value)}
