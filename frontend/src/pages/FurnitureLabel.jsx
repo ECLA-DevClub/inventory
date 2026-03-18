@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
-import { API_URL, getFurnitureById, getFurnitureQrUrl } from "../api";
+import {
+  getFurnitureById,
+  getFurnitureQrUrl,
+  resolveAssetUrl,
+} from "../api";
 
 function FurnitureLabel() {
   const { t } = useTranslation();
@@ -43,10 +47,10 @@ function FurnitureLabel() {
   }
 
   const qrSrc = getFurnitureQrUrl(item.id);
-  const photoSrc = item.photo_url ? `${API_URL}${item.photo_url}` : null;
+  const photoSrc = resolveAssetUrl(item.photo_url);
 
   return (
-    <div className="animate-fadeIn text-white">
+    <div className="animate-fadeIn text-white print:text-black">
       <div className="mb-6 flex flex-wrap gap-3 print:hidden">
         <button
           onClick={() => navigate(-1)}
@@ -63,61 +67,83 @@ function FurnitureLabel() {
         </button>
       </div>
 
-      <div className="mx-auto max-w-md">
-        <div className="rounded-2xl border border-black/10 bg-white p-6 text-black shadow-xl">
-          <div className="border-b border-black/10 pb-4 text-center">
-            <div className="text-xs uppercase tracking-[0.2em] text-black/50">
+      <div className="mx-auto max-w-md print:max-w-[92mm]">
+        <div className="rounded-2xl border border-black/10 bg-white p-5 text-black shadow-xl print:rounded-none print:border print:p-4 print:shadow-none">
+          <div className="border-b border-black/10 pb-3 text-center">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50 print:text-[9px]">
               {t("Inventory Label")}
             </div>
-            <div className="mt-2 break-all text-2xl font-bold">
+            <div className="mt-2 break-all text-xl font-bold print:text-lg">
               {item.inv_number || `INV-${item.id}`}
             </div>
           </div>
 
-          <div className="mt-5 flex justify-center">
-            <div className="rounded-2xl border border-black/10 p-3">
+          <div className="mt-4 flex justify-center">
+            <div className="rounded-2xl border border-black/10 p-3 print:rounded-xl print:p-2">
               <img
                 src={qrSrc}
-                alt={`QR ${item.inv_number}`}
-                className="h-56 w-56 object-contain"
+                alt={`QR ${item.inv_number || `INV-${item.id}`}`}
+                className="h-48 w-48 object-contain print:h-36 print:w-36"
               />
             </div>
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-2.5 print:mt-3 print:space-y-2">
             <div>
-              <div className="text-xs text-black/50">{t("Name")}</div>
-              <div className="text-base font-semibold">{item.name || "—"}</div>
+              <div className="text-xs text-black/50 print:text-[10px]">
+                {t("Name")}
+              </div>
+              <div className="break-words text-base font-semibold print:text-sm">
+                {item.name || "—"}
+              </div>
             </div>
 
             <div>
-              <div className="text-xs text-black/50">{t("Type")}</div>
-              <div className="text-base">{item.type_name || "—"}</div>
+              <div className="text-xs text-black/50 print:text-[10px]">
+                {t("Type")}
+              </div>
+              <div className="break-words text-base print:text-sm">
+                {item.type_name || "—"}
+              </div>
             </div>
 
             <div>
-              <div className="text-xs text-black/50">{t("Building")}</div>
-              <div className="text-base">{item.building_name || "—"}</div>
+              <div className="text-xs text-black/50 print:text-[10px]">
+                {t("Building")}
+              </div>
+              <div className="break-words text-base print:text-sm">
+                {item.building_name || "—"}
+              </div>
             </div>
 
             <div>
-              <div className="text-xs text-black/50">{t("Room")}</div>
-              <div className="text-base">{item.room_name || "—"}</div>
+              <div className="text-xs text-black/50 print:text-[10px]">
+                {t("Room")}
+              </div>
+              <div className="break-words text-base print:text-sm">
+                {item.room_name || "—"}
+              </div>
             </div>
 
             <div>
-              <div className="text-xs text-black/50">{t("Condition")}</div>
-              <div className="text-base">{item.condition_name || "—"}</div>
+              <div className="text-xs text-black/50 print:text-[10px]">
+                {t("Condition")}
+              </div>
+              <div className="break-words text-base print:text-sm">
+                {item.condition_name || "—"}
+              </div>
             </div>
           </div>
 
           {photoSrc && (
-            <div className="mt-5">
-              <div className="mb-2 text-xs text-black/50">{t("Photo")}</div>
+            <div className="mt-4 print:mt-3">
+              <div className="mb-2 text-xs text-black/50 print:text-[10px]">
+                {t("Photo")}
+              </div>
               <img
                 src={photoSrc}
                 alt={item.name}
-                className="h-48 w-full rounded-xl border border-black/10 object-cover"
+                className="h-40 w-full rounded-xl border border-black/10 object-cover print:h-28 print:rounded-lg"
               />
             </div>
           )}
