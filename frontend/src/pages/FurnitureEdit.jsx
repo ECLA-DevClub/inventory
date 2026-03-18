@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { AuthContext } from "../context/AuthContext";
 import {
   getFurnitureById,
+  getFurnitureHistory,
   updateFurniture,
   uploadPhoto,
   getConditions,
@@ -12,6 +13,183 @@ import {
   getRooms,
   resolveAssetUrl,
 } from "../api";
+
+function getInspectionMeta(nextConditionCheckDate) {
+  if (!nextConditionCheckDate) {
+    return {
+      label: "Not scheduled",
+      icon: "⚪",
+      tone: "border-white/10 bg-white/[0.04] text-white/75",
+      hint: "Set interval or next inspection date",
+    };
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nextDate = new Date(nextConditionCheckDate);
+  nextDate.setHours(0, 0, 0, 0);
+  const diffMs = nextDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) {
+    return {
+      label: "Overdue",
+      icon: "🔴",
+      tone: "border-red-400/25 bg-red-500/10 text-red-200",
+      hint: "Inspection date has already passed",
+    };
+  }
+  if (diffDays <= 7) {
+    return {
+      label: "Due soon",
+      icon: "🟡",
+      tone: "border-yellow-400/25 bg-yellow-500/10 text-yellow-100",
+      hint: `Inspection due in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
+    };
+  }
+  return {
+    label: "OK",
+    icon: "🟢",
+    tone: "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
+    hint: `Next inspection in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
+  };
+}
+
+const ACTION_LABELS = {
+  create: { label: "Created", color: "text-emerald-300", bg: "bg-emerald-500/10 border-emerald-400/20" },
+  update: { label: "Updated", color: "text-blue-300", bg: "bg-blue-500/10 border-blue-400/20" },
+  edit:   { label: "Edited",  color: "text-blue-300", bg: "bg-blue-500/10 border-blue-400/20" },
+  move:   { label: "Moved",   color: "text-yellow-200", bg: "bg-yellow-500/10 border-yellow-400/20" },
+  delete: { label: "Deleted", color: "text-red-300", bg: "bg-red-500/10 border-red-400/20" },
+  inspection: { label: "Inspected", color: "text-purple-300", bg: "bg-purple-500/10 border-purple-400/20" },
+  photo_update: { label: "Photo", color: "text-cyan-300", bg: "bg-cyan-500/10 border-cyan-400/20" },
+};
+
+function getActionMeta(action, changeType) {
+  const key = changeType || action;
+  return ACTION_LABELS[key] || ACTION_LABELS[action] || { label: action, color: "text-white/60", bg: "bg-white/5 border-white/10" };
+}
+
+function formatHistoryDate(dateStr) {
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString("ru-RU", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function HistoryBlock({ furnitureId }) {
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const handleToggle = async () => {
+    if (!open && !loaded) {
+      setLoading(true);
+      try {
+        const data = await getFurnitureHistory(furnitureId);
+        setHistory(Array.isArray(data) ? data : []);
+        setLoaded(true);
+      } catch (e) {
+        console.error("History load failed", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    setOpen((prev) => !prev);
+  };
+
+  return (
+    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden">
+      {/* Toggle header */}
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-white/[0.04]"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-white/80">Change History</span>
+          {loaded && (
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/50">
+              {history.length}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-white/40">
+          <span className="text-xs">{open ? "Hide" : "Show"}</span>
+          <svg
+            className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* Content */}
+      {open && (
+        <div className="border-t border-white/10 px-5 pb-5 pt-4">
+          {loading ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-white/40">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+              Loading history...
+            </div>
+          ) : history.length === 0 ? (
+            <div className="py-4 text-sm text-white/40">No history records yet.</div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {history.map((record) => {
+                const meta = getActionMeta(record.action, record.change_type);
+                return (
+                  <div
+                    key={record.id}
+                    className="rounded-[1rem] border border-white/[0.07] bg-white/[0.03] p-4"
+                  >
+                    {/* Top row */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.bg} ${meta.color}`}
+                      >
+                        {meta.label}
+                      </span>
+                      <span className="text-xs text-white/40">
+                        {formatHistoryDate(record.created_at)}
+                      </span>
+                      {record.user_email && (
+                        <span className="text-xs text-white/50">
+                          · {record.user_email}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Reason */}
+                    {record.reason && (
+                      <div className="mt-2.5 text-sm text-white/75">
+                        <span className="text-white/40 text-xs uppercase tracking-wide">Reason: </span>
+                        {record.reason}
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    {record.description && (
+                      <div className="mt-1 text-xs text-white/40">
+                        {record.description}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FurnitureEdit() {
   const { t } = useTranslation();
@@ -62,59 +240,17 @@ function FurnitureEdit() {
     return `${apiBase}/furniture/${id}/qr`;
   }, [id]);
 
-  const inspectionMeta = useMemo(() => {
-    if (!formData.next_condition_check_date) {
-      return {
-        label: "Not scheduled",
-        icon: "⚪",
-        tone: "border-white/10 bg-white/[0.04] text-white/75",
-        hint: "Set interval or next inspection date",
-      };
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const nextDate = new Date(formData.next_condition_check_date);
-    nextDate.setHours(0, 0, 0, 0);
-
-    const diffMs = nextDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      return {
-        label: "Overdue",
-        icon: "🔴",
-        tone: "border-red-400/25 bg-red-500/10 text-red-200",
-        hint: "Inspection date has already passed",
-      };
-    }
-
-    if (diffDays <= 7) {
-      return {
-        label: "Due soon",
-        icon: "🟡",
-        tone: "border-yellow-400/25 bg-yellow-500/10 text-yellow-100",
-        hint: `Inspection due in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
-      };
-    }
-
-    return {
-      label: "OK",
-      icon: "🟢",
-      tone: "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
-      hint: `Next inspection in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
-    };
-  }, [formData.next_condition_check_date]);
+  const inspectionMeta = useMemo(
+    () => getInspectionMeta(formData.next_condition_check_date),
+    [formData.next_condition_check_date]
+  );
 
   useEffect(() => {
     let cancelled = false;
-
     const loadData = async () => {
       try {
         setLoading(true);
         setError("");
-
         const [itemData, typesData, buildingsData, roomsData, conditionsData] =
           await Promise.all([
             getFurnitureById(id),
@@ -123,15 +259,12 @@ function FurnitureEdit() {
             getRooms(),
             getConditions(),
           ]);
-
         if (cancelled) return;
-
         setItem(itemData);
         setTypesList(Array.isArray(typesData) ? typesData : []);
         setBuildingsList(Array.isArray(buildingsData) ? buildingsData : []);
         setRoomsList(Array.isArray(roomsData) ? roomsData : []);
         setConditionsList(Array.isArray(conditionsData) ? conditionsData : []);
-
         setFormData({
           name: itemData?.name || "",
           type_id: itemData?.type_id || "",
@@ -155,34 +288,23 @@ function FurnitureEdit() {
           change_reason: "",
           photo: null,
         });
-
         setPreview(resolveAssetUrl(itemData?.photo_url));
       } catch (err) {
         console.error(err);
-        if (!cancelled) {
-          setError(t("Asset load failed"));
-        }
+        if (!cancelled) setError(t("Asset load failed"));
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
-
     loadData();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [id, t]);
 
   useEffect(() => {
     if (!formData.building_id) return;
-
     const roomExistsInBuilding = filteredRooms.some(
       (room) => Number(room.id) === Number(formData.room_id)
     );
-
     if (!roomExistsInBuilding) {
       setFormData((prev) => ({
         ...prev,
@@ -192,37 +314,23 @@ function FurnitureEdit() {
   }, [formData.building_id, filteredRooms, formData.room_id]);
 
   useEffect(() => {
-    if (!formData.last_condition_check_date || !formData.condition_check_interval_days) {
-      return;
-    }
-
+    if (!formData.last_condition_check_date || !formData.condition_check_interval_days) return;
     const interval = Number(formData.condition_check_interval_days);
-    if (!Number.isFinite(interval) || interval <= 0) {
-      return;
-    }
-
+    if (!Number.isFinite(interval) || interval <= 0) return;
     const baseDate = new Date(formData.last_condition_check_date);
-    if (Number.isNaN(baseDate.getTime())) {
-      return;
-    }
-
+    if (Number.isNaN(baseDate.getTime())) return;
     const nextDate = new Date(baseDate);
     nextDate.setDate(nextDate.getDate() + interval);
-
     const yyyy = nextDate.getFullYear();
     const mm = String(nextDate.getMonth() + 1).padStart(2, "0");
     const dd = String(nextDate.getDate()).padStart(2, "0");
     const formatted = `${yyyy}-${mm}-${dd}`;
-
     setFormData((prev) =>
       prev.next_condition_check_date === formatted
         ? prev
         : { ...prev, next_condition_check_date: formatted }
     );
-  }, [
-    formData.last_condition_check_date,
-    formData.condition_check_interval_days,
-  ]);
+  }, [formData.last_condition_check_date, formData.condition_check_interval_days]);
 
   const clearFieldError = (name) => {
     setFieldErrors((prev) => {
@@ -235,35 +343,20 @@ function FurnitureEdit() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setError("");
     clearFieldError(name);
-
     if (name === "building_id") {
-      setFormData((prev) => ({
-        ...prev,
-        building_id: value === "" ? "" : Number(value),
-        room_id: "",
-      }));
+      setFormData((prev) => ({ ...prev, building_id: value === "" ? "" : Number(value), room_id: "" }));
       return;
     }
-
     if (name === "price_kgs") {
-      setFormData((prev) => ({
-        ...prev,
-        price_kgs: value.replace(/[^\d]/g, ""),
-      }));
+      setFormData((prev) => ({ ...prev, price_kgs: value.replace(/[^\d]/g, "") }));
       return;
     }
-
     if (name === "condition_check_interval_days") {
-      setFormData((prev) => ({
-        ...prev,
-        condition_check_interval_days: value.replace(/[^\d]/g, ""),
-      }));
+      setFormData((prev) => ({ ...prev, condition_check_interval_days: value.replace(/[^\d]/g, "") }));
       return;
     }
-
     setFormData((prev) => ({
       ...prev,
       [name]: name.endsWith("_id") && value !== "" ? Number(value) : value,
@@ -274,157 +367,72 @@ function FurnitureEdit() {
     const file = e.target.files?.[0];
     setError("");
     clearFieldError("photo");
-
     if (!file) return;
-
     if (!["image/jpeg", "image/png"].includes(file.type)) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        photo: t("JPG PNG only"),
-      }));
+      setFieldErrors((prev) => ({ ...prev, photo: t("JPG PNG only") }));
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        photo: t("Max file 5MB"),
-      }));
+      setFieldErrors((prev) => ({ ...prev, photo: t("Max file 5MB") }));
       return;
     }
-
     setFormData((prev) => ({ ...prev, photo: file }));
     setPreview(URL.createObjectURL(file));
   };
 
   const validateForm = () => {
     const errors = {};
-
-    if (!formData.name.trim()) {
-      errors.name = t("Name is required");
-    }
-
-    if (!formData.type_id) {
-      errors.type_id = t("Choose type error");
-    }
-
-    if (!formData.building_id) {
-      errors.building_id = t("Choose building error");
-    }
-
-    if (!formData.room_id) {
-      errors.room_id = t("Choose room error");
-    }
-
-    if (
-      formData.purchase_date &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(formData.purchase_date)
-    ) {
+    if (!formData.name.trim()) errors.name = t("Name is required");
+    if (!formData.type_id) errors.type_id = t("Choose type error");
+    if (!formData.building_id) errors.building_id = t("Choose building error");
+    if (!formData.room_id) errors.room_id = t("Choose room error");
+    if (formData.purchase_date && !/^\d{4}-\d{2}-\d{2}$/.test(formData.purchase_date))
       errors.purchase_date = t("Date format error");
-    }
-
-    if (
-      formData.price_kgs !== "" &&
-      (!/^\d+$/.test(formData.price_kgs) || Number(formData.price_kgs) < 0)
-    ) {
+    if (formData.price_kgs !== "" && (!/^\d+$/.test(formData.price_kgs) || Number(formData.price_kgs) < 0))
       errors.price_kgs = t("Price format error");
-    }
-
-    if (
-      formData.last_condition_check_date &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(formData.last_condition_check_date)
-    ) {
+    if (formData.last_condition_check_date && !/^\d{4}-\d{2}-\d{2}$/.test(formData.last_condition_check_date))
       errors.last_condition_check_date = "Use YYYY-MM-DD";
-    }
-
-    if (
-      formData.next_condition_check_date &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(formData.next_condition_check_date)
-    ) {
+    if (formData.next_condition_check_date && !/^\d{4}-\d{2}-\d{2}$/.test(formData.next_condition_check_date))
       errors.next_condition_check_date = "Use YYYY-MM-DD";
-    }
-
-    if (
-      formData.condition_check_interval_days !== "" &&
-      (!/^\d+$/.test(formData.condition_check_interval_days) ||
-        Number(formData.condition_check_interval_days) <= 0)
-    ) {
+    if (formData.condition_check_interval_days !== "" && (!/^\d+$/.test(formData.condition_check_interval_days) || Number(formData.condition_check_interval_days) <= 0))
       errors.condition_check_interval_days = "Enter a positive number";
-    }
-
-    if (!formData.change_reason.trim()) {
-      errors.change_reason = t("Change reason is required");
-    } else if (formData.change_reason.trim().length < 5) {
-      errors.change_reason = t("Change reason too short");
-    }
-
+    if (!formData.change_reason.trim()) errors.change_reason = t("Change reason is required");
+    else if (formData.change_reason.trim().length < 5) errors.change_reason = t("Change reason too short");
     return errors;
   };
 
   const mapBackendErrorToField = (message) => {
     const lower = String(message || "").toLowerCase();
-
-    if (lower.includes("change_reason")) {
-      return { change_reason: t("Change reason is required") };
-    }
-    if (lower.includes("last_condition_check_date")) {
-      return { last_condition_check_date: "Check last inspection date" };
-    }
-    if (lower.includes("next_condition_check_date")) {
-      return { next_condition_check_date: "Check next inspection date" };
-    }
-    if (lower.includes("condition_check_interval_days")) {
-      return { condition_check_interval_days: "Check inspection interval" };
-    }
+    if (lower.includes("change_reason")) return { change_reason: t("Change reason is required") };
+    if (lower.includes("last_condition_check_date")) return { last_condition_check_date: "Check last inspection date" };
+    if (lower.includes("next_condition_check_date")) return { next_condition_check_date: "Check next inspection date" };
+    if (lower.includes("condition_check_interval_days")) return { condition_check_interval_days: "Check inspection interval" };
     if (lower.includes("name")) return { name: t("Check Name") };
     if (lower.includes("type_id")) return { type_id: t("Check Type") };
     if (lower.includes("building_id")) return { building_id: t("Check Building") };
     if (lower.includes("room_id")) return { room_id: t("Check Room") };
-    if (lower.includes("condition_id")) {
-      return { condition_id: t("Check Condition") };
-    }
-    if (lower.includes("purchase_date") || lower.includes("date")) {
-      return { purchase_date: t("Check Purchase Date") };
-    }
-    if (lower.includes("price_kgs") || lower.includes("price")) {
-      return { price_kgs: t("Check Price") };
-    }
-    if (lower.includes("manufacturer")) {
-      return { manufacturer: t("Check Manufacturer") };
-    }
-    if (lower.includes("model")) {
-      return { model: t("Check Model") };
-    }
-
+    if (lower.includes("condition_id")) return { condition_id: t("Check Condition") };
+    if (lower.includes("purchase_date") || lower.includes("date")) return { purchase_date: t("Check Purchase Date") };
+    if (lower.includes("price_kgs") || lower.includes("price")) return { price_kgs: t("Check Price") };
+    if (lower.includes("manufacturer")) return { manufacturer: t("Check Manufacturer") };
+    if (lower.includes("model")) return { model: t("Check Model") };
     return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!authReady) {
-      setError(t("Session check not finished"));
-      return;
-    }
-
-    if (!token) {
-      setError(t("Session expired"));
-      return;
-    }
-
+    if (!authReady) { setError(t("Session check not finished")); return; }
+    if (!token) { setError(t("Session expired")); return; }
     const validationErrors = validateForm();
-
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
       setError(t("Please fix form errors"));
       return;
     }
-
     try {
       setSaving(true);
       setError("");
       setFieldErrors({});
-
       await updateFurniture(
         id,
         {
@@ -432,17 +440,13 @@ function FurnitureEdit() {
           type_id: Number(formData.type_id),
           building_id: Number(formData.building_id),
           room_id: Number(formData.room_id),
-          condition_id:
-            formData.condition_id === "" ? null : Number(formData.condition_id),
+          condition_id: formData.condition_id === "" ? null : Number(formData.condition_id),
           model: formData.model.trim() || null,
           manufacturer: formData.manufacturer.trim() || null,
           purchase_date: formData.purchase_date || null,
-          price_kgs:
-            formData.price_kgs === "" ? null : Number(formData.price_kgs),
-          last_condition_check_date:
-            formData.last_condition_check_date || null,
-          next_condition_check_date:
-            formData.next_condition_check_date || null,
+          price_kgs: formData.price_kgs === "" ? null : Number(formData.price_kgs),
+          last_condition_check_date: formData.last_condition_check_date || null,
+          next_condition_check_date: formData.next_condition_check_date || null,
           condition_check_interval_days:
             formData.condition_check_interval_days === ""
               ? null
@@ -451,18 +455,12 @@ function FurnitureEdit() {
         },
         token
       );
-
-      if (formData.photo) {
-        await uploadPhoto(id, formData.photo, token);
-      }
-
+      if (formData.photo) await uploadPhoto(id, formData.photo, token);
       navigate("/furniture");
     } catch (err) {
       console.error(err);
       const backendFieldError = mapBackendErrorToField(err.message);
-      if (backendFieldError) {
-        setFieldErrors(backendFieldError);
-      }
+      if (backendFieldError) setFieldErrors(backendFieldError);
       setError(err.message || t("Save changes failed"));
     } finally {
       setSaving(false);
@@ -516,7 +514,6 @@ function FurnitureEdit() {
           <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-white/45">
             {t("Asset editor")}
           </div>
-
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
@@ -526,7 +523,6 @@ function FurnitureEdit() {
                 {t("Edit asset description")}
               </p>
             </div>
-
             <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white/75">
               <span className="text-white/45">{t("Inventory Number")}:</span>{" "}
               <span className="font-medium text-white">
@@ -544,12 +540,9 @@ function FurnitureEdit() {
 
         <div className="relative z-10 mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className="mb-2 block text-sm font-medium text-white/70">
-              ID
-            </label>
+            <label className="mb-2 block text-sm font-medium text-white/70">ID</label>
             <input readOnly value={item.id} className={readonlyClass} />
           </div>
-
           <div className="md:col-span-2">
             <label className="mb-2 block text-sm font-medium text-white/70">
               {t("Inventory Number")}
@@ -564,245 +557,127 @@ function FurnitureEdit() {
           onSubmit={handleSubmit}
           className="relative z-10 grid grid-cols-1 gap-6 md:grid-cols-2"
         >
+          {/* Name */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Name")}
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder={t("Example teacher desk")}
-              className={getFieldClass("name")}
-            />
+            <label className="block text-sm font-medium text-white/70">{t("Name")}</label>
+            <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder={t("Example teacher desk")} className={getFieldClass("name")} />
             {renderFieldError("name")}
           </div>
 
+          {/* Type */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Type")}
-            </label>
-            <select
-              name="type_id"
-              value={formData.type_id}
-              onChange={handleChange}
-              className={getFieldClass("type_id")}
-            >
-              <option value="" className="bg-slate-900">
-                {t("Choose type")}
-              </option>
+            <label className="block text-sm font-medium text-white/70">{t("Type")}</label>
+            <select name="type_id" value={formData.type_id} onChange={handleChange} className={getFieldClass("type_id")}>
+              <option value="" className="bg-slate-900">{t("Choose type")}</option>
               {typesList.map((type) => (
-                <option key={type.id} value={type.id} className="bg-slate-900">
-                  {type.name}
-                </option>
+                <option key={type.id} value={type.id} className="bg-slate-900">{type.name}</option>
               ))}
             </select>
             {renderFieldError("type_id")}
           </div>
 
+          {/* Model */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Model")}
-            </label>
-            <input
-              type="text"
-              name="model"
-              value={formData.model}
-              onChange={handleChange}
-              placeholder={t("Example office model")}
-              className={getFieldClass("model")}
-            />
+            <label className="block text-sm font-medium text-white/70">{t("Model")}</label>
+            <input type="text" name="model" value={formData.model} onChange={handleChange} placeholder={t("Example office model")} className={getFieldClass("model")} />
             {renderFieldError("model")}
           </div>
 
+          {/* Manufacturer */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Manufacturer")}
-            </label>
-            <input
-              type="text"
-              name="manufacturer"
-              value={formData.manufacturer}
-              onChange={handleChange}
-              placeholder={t("Example manufacturer")}
-              className={getFieldClass("manufacturer")}
-            />
+            <label className="block text-sm font-medium text-white/70">{t("Manufacturer")}</label>
+            <input type="text" name="manufacturer" value={formData.manufacturer} onChange={handleChange} placeholder={t("Example manufacturer")} className={getFieldClass("manufacturer")} />
             {renderFieldError("manufacturer")}
           </div>
 
+          {/* Purchase Date */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Purchase Date")}
-            </label>
-            <input
-              type="date"
-              name="purchase_date"
-              value={formData.purchase_date}
-              onChange={handleChange}
-              className={getFieldClass("purchase_date")}
-            />
+            <label className="block text-sm font-medium text-white/70">{t("Purchase Date")}</label>
+            <input type="date" name="purchase_date" value={formData.purchase_date} onChange={handleChange} className={getFieldClass("purchase_date")} />
             {renderFieldError("purchase_date")}
           </div>
 
+          {/* Price */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Price (KGS)")}
-            </label>
-            <input
-              type="text"
-              name="price_kgs"
-              value={formData.price_kgs}
-              onChange={handleChange}
-              placeholder="4500"
-              className={getFieldClass("price_kgs")}
-            />
+            <label className="block text-sm font-medium text-white/70">{t("Price (KGS)")}</label>
+            <input type="text" name="price_kgs" value={formData.price_kgs} onChange={handleChange} placeholder="4500" className={getFieldClass("price_kgs")} />
             {renderFieldError("price_kgs")}
           </div>
 
+          {/* Building */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Building")}
-            </label>
-            <select
-              name="building_id"
-              value={formData.building_id}
-              onChange={handleChange}
-              className={getFieldClass("building_id")}
-            >
-              <option value="" className="bg-slate-900">
-                {t("Choose building")}
-              </option>
-              {buildingsList.map((building) => (
-                <option
-                  key={building.id}
-                  value={building.id}
-                  className="bg-slate-900"
-                >
-                  {building.name}
-                </option>
+            <label className="block text-sm font-medium text-white/70">{t("Building")}</label>
+            <select name="building_id" value={formData.building_id} onChange={handleChange} className={getFieldClass("building_id")}>
+              <option value="" className="bg-slate-900">{t("Choose building")}</option>
+              {buildingsList.map((b) => (
+                <option key={b.id} value={b.id} className="bg-slate-900">{b.name}</option>
               ))}
             </select>
             {renderFieldError("building_id")}
           </div>
 
+          {/* Room */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Room")}
-            </label>
-            <select
-              name="room_id"
-              value={formData.room_id}
-              onChange={handleChange}
-              className={getFieldClass("room_id")}
-            >
-              <option value="" className="bg-slate-900">
-                {t("Choose room")}
-              </option>
+            <label className="block text-sm font-medium text-white/70">{t("Room")}</label>
+            <select name="room_id" value={formData.room_id} onChange={handleChange} className={getFieldClass("room_id")}>
+              <option value="" className="bg-slate-900">{t("Choose room")}</option>
               {filteredRooms.map((room) => (
-                <option key={room.id} value={room.id} className="bg-slate-900">
-                  {room.name}
-                </option>
+                <option key={room.id} value={room.id} className="bg-slate-900">{room.name}</option>
               ))}
             </select>
             {renderFieldError("room_id")}
           </div>
 
+          {/* Condition */}
           <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-white/70">
-              {t("Condition")}
-            </label>
-            <select
-              name="condition_id"
-              value={formData.condition_id}
-              onChange={handleChange}
-              className={getFieldClass("condition_id")}
-            >
-              <option value="" className="bg-slate-900">
-                {t("No condition")}
-              </option>
+            <label className="block text-sm font-medium text-white/70">{t("Condition")}</label>
+            <select name="condition_id" value={formData.condition_id} onChange={handleChange} className={getFieldClass("condition_id")}>
+              <option value="" className="bg-slate-900">{t("No condition")}</option>
               {conditionsList.map((c) => (
-                <option key={c.id} value={c.id} className="bg-slate-900">
-                  {c.name}
-                </option>
+                <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>
               ))}
             </select>
             {renderFieldError("condition_id")}
           </div>
 
+          {/* Inspection */}
           <div className="md:col-span-2">
             <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
               <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="text-sm font-medium text-white/75">
-                    Inspection Status
-                  </div>
-                  <div className="mt-1 text-xs text-white/45">
-                    Adjust condition checks and upcoming inspection dates.
-                  </div>
+                  <div className="text-sm font-medium text-white/75">Inspection Status</div>
+                  <div className="mt-1 text-xs text-white/45">Adjust condition checks and upcoming inspection dates.</div>
                 </div>
-
-                <div
-                  className={`rounded-[1rem] border px-4 py-3 text-sm font-medium ${inspectionMeta.tone}`}
-                >
+                <div className={`rounded-[1rem] border px-4 py-3 text-sm font-medium ${inspectionMeta.tone}`}>
                   <div className="flex items-center gap-2">
                     <span>{inspectionMeta.icon}</span>
                     <span>{inspectionMeta.label}</span>
                   </div>
-                  <div className="mt-1 text-xs opacity-80">
-                    {inspectionMeta.hint}
-                  </div>
+                  <div className="mt-1 text-xs opacity-80">{inspectionMeta.hint}</div>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-white/70">
-                    Last inspection
-                  </label>
-                  <input
-                    type="date"
-                    name="last_condition_check_date"
-                    value={formData.last_condition_check_date}
-                    onChange={handleChange}
-                    className={getFieldClass("last_condition_check_date")}
-                  />
+                  <label className="block text-sm font-medium text-white/70">Last inspection</label>
+                  <input type="date" name="last_condition_check_date" value={formData.last_condition_check_date} onChange={handleChange} className={getFieldClass("last_condition_check_date")} />
                   {renderFieldError("last_condition_check_date")}
                 </div>
-
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-white/70">
-                    Check every (days)
-                  </label>
-                  <input
-                    type="text"
-                    name="condition_check_interval_days"
-                    value={formData.condition_check_interval_days}
-                    onChange={handleChange}
-                    placeholder="180"
-                    className={getFieldClass("condition_check_interval_days")}
-                  />
+                  <label className="block text-sm font-medium text-white/70">Check every (days)</label>
+                  <input type="text" name="condition_check_interval_days" value={formData.condition_check_interval_days} onChange={handleChange} placeholder="180" className={getFieldClass("condition_check_interval_days")} />
                   {renderFieldError("condition_check_interval_days")}
                 </div>
-
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-white/70">
-                    Next inspection
-                  </label>
-                  <input
-                    type="date"
-                    name="next_condition_check_date"
-                    value={formData.next_condition_check_date}
-                    onChange={handleChange}
-                    className={getFieldClass("next_condition_check_date")}
-                  />
+                  <label className="block text-sm font-medium text-white/70">Next inspection</label>
+                  <input type="date" name="next_condition_check_date" value={formData.next_condition_check_date} onChange={handleChange} className={getFieldClass("next_condition_check_date")} />
                   {renderFieldError("next_condition_check_date")}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2 md:col-span-2">
+          {/* Reason for change */}
+          <div className="space-y-3 md:col-span-2">
             <label className="block text-sm font-medium text-white/70">
               {t("Reason for change")}
             </label>
@@ -818,8 +693,12 @@ function FurnitureEdit() {
               {t("This field is required and will be saved in asset history")}
             </div>
             {renderFieldError("change_reason")}
+
+            {/* ── HISTORY BLOCK ── */}
+            <HistoryBlock furnitureId={id} />
           </div>
 
+          {/* Photo */}
           <div className="md:col-span-2">
             <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -827,42 +706,22 @@ function FurnitureEdit() {
                   <label className="block text-sm font-medium text-white/75">
                     {t("Photo (JPG/PNG, max 5MB)")}
                   </label>
-                  <p className="mt-1 text-xs text-white/45">
-                    {t("Edit photo upload help")}
-                  </p>
+                  <p className="mt-1 text-xs text-white/45">{t("Edit photo upload help")}</p>
                 </div>
-
                 {formData.photo && (
                   <span className="liquid-badge">{t("New file selected")}</span>
                 )}
               </div>
-
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                onChange={handlePhotoChange}
-                className={getFieldClass("photo")}
-              />
+              <input type="file" accept="image/jpeg,image/png" onChange={handlePhotoChange} className={getFieldClass("photo")} />
               {renderFieldError("photo")}
-
               <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <div>
                   {preview ? (
                     <div className="flex flex-col gap-4">
-                      <img
-                        src={preview}
-                        alt={t("Preview")}
-                        className="h-64 w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20"
-                      />
+                      <img src={preview} alt={t("Preview")} className="h-64 w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20" />
                       <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
-                        <div className="mb-2 text-base font-medium text-white">
-                          {t("Photo preview")}
-                        </div>
-                        <div>
-                          {formData.photo
-                            ? t("New photo after save")
-                            : t("Current photo shown here")}
-                        </div>
+                        <div className="mb-2 text-base font-medium text-white">{t("Photo preview")}</div>
+                        <div>{formData.photo ? t("New photo after save") : t("Current photo shown here")}</div>
                       </div>
                     </div>
                   ) : (
@@ -871,20 +730,12 @@ function FurnitureEdit() {
                     </div>
                   )}
                 </div>
-
                 <div className="flex flex-col gap-4">
                   <div className="grid h-64 place-items-center rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 shadow-lg shadow-black/10">
-                    <img
-                      src={qrUrl}
-                      alt={t("QR code")}
-                      className="h-full max-h-56 w-full max-w-[240px] rounded-[1rem] bg-white p-3 object-contain"
-                    />
+                    <img src={qrUrl} alt={t("QR code")} className="h-full max-h-56 w-full max-w-[240px] rounded-[1rem] bg-white p-3 object-contain" />
                   </div>
-
                   <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
-                    <div className="mb-2 text-base font-medium text-white">
-                      {t("QR code")}
-                    </div>
+                    <div className="mb-2 text-base font-medium text-white">{t("QR code")}</div>
                     <div>{t("QR leads to the asset detail page")}</div>
                   </div>
                 </div>
@@ -892,6 +743,7 @@ function FurnitureEdit() {
             </div>
           </div>
 
+          {/* Submit */}
           <div className="md:col-span-2 flex flex-col gap-3 pt-2 sm:flex-row">
             <button
               type="submit"
@@ -900,7 +752,6 @@ function FurnitureEdit() {
             >
               {saving ? t("Saving...") : t("Save changes")}
             </button>
-
             <button
               type="button"
               onClick={() => navigate("/furniture")}
