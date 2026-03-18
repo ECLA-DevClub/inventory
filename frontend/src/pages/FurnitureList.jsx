@@ -180,20 +180,6 @@ function FurnitureList() {
     }
   }, [availableRooms, selectedRoomId]);
 
-  const formatInv = (inv) => {
-    if (!inv) return { first: "", second: "" };
-    if (inv.length <= 30) return { first: inv, second: "" };
-
-    const splitPos = Math.max(
-      inv.lastIndexOf("-", 30),
-      Math.floor(inv.length / 2)
-    );
-    const first = inv.slice(0, splitPos);
-    const second = inv.slice(splitPos + (inv[splitPos] === "-" ? 1 : 0));
-
-    return { first, second };
-  };
-
   const formatPrice = (value) => {
     if (value === null || value === undefined || value === "") return "—";
     return `${Number(value).toLocaleString("ru-RU")} KGS`;
@@ -397,19 +383,24 @@ function FurnitureList() {
         {listLoading ? t("Loading") : `${t("Found")}: ${filtered.length}`}
       </div>
 
+      {/* ── DESKTOP TABLE ── */}
       <div className="mt-6 hidden overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl lg:block">
         <table className="w-full text-sm">
           <thead className="border-b border-white/10">
             <tr className="text-white/70">
-              <th className="px-6 py-4 text-left font-medium">Inv #</th>
-              <th className="px-6 py-4 text-left font-medium">{t("Name")}</th>
-              <th className="px-6 py-4 text-left font-medium">{t("Type")}</th>
-              <th className="px-6 py-4 text-left font-medium">Price</th>
-              <th className="px-6 py-4 text-left font-medium">{t("Location")}</th>
-              <th className="px-6 py-4 text-left font-medium">{t("Status")}</th>
-              <th className="px-6 py-4 text-left font-medium">Inspection</th>
+              {/* Photo — fixed narrow column */}
+              <th className="w-[72px] px-4 py-4 text-left font-medium xl:w-[88px]"></th>
+              {/* Inv # — fixed width, no wrap */}
+              <th className="w-[130px] px-4 py-4 text-left font-medium xl:w-[150px]">Inv #</th>
+              <th className="px-4 py-4 text-left font-medium">{t("Name")}</th>
+              <th className="px-4 py-4 text-left font-medium">{t("Type")}</th>
+              <th className="px-4 py-4 text-left font-medium">Price</th>
+              <th className="px-4 py-4 text-left font-medium">{t("Location")}</th>
+              <th className="px-4 py-4 text-left font-medium">{t("Status")}</th>
+              {/* Inspection — enough width so badge never clips */}
+              <th className="w-[140px] px-4 py-4 text-left font-medium">Inspection</th>
               {canManageAssets && (
-                <th className="px-6 py-4 text-left font-medium">{t("Actions")}</th>
+                <th className="px-4 py-4 text-left font-medium">{t("Actions")}</th>
               )}
             </tr>
           </thead>
@@ -421,84 +412,71 @@ function FurnitureList() {
                 onClick={() => handleOpenDetail(f.id)}
                 className="cursor-pointer border-b border-white/5 transition hover:bg-white/10"
               >
-                <td className="whitespace-nowrap px-6 py-4 text-blue-300">
-                  <div className="flex items-center gap-3">
-                    {f.photo ? (
-                      <img
-                        src={f.photo}
-                        alt={f.name || f.invNumber}
-                        className="h-16 w-16 cursor-zoom-in rounded-xl object-cover xl:h-20 xl:w-20"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setModalPhoto(f.photo);
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          holdTimer.current = setTimeout(
-                            () => setModalPhoto(f.photo),
-                            600
-                          );
-                        }}
-                        onMouseUp={(e) => {
-                          e.stopPropagation();
-                          if (holdTimer.current) {
-                            clearTimeout(holdTimer.current);
-                            holdTimer.current = null;
-                          }
-                        }}
-                        onMouseLeave={() => {
-                          if (holdTimer.current) {
-                            clearTimeout(holdTimer.current);
-                            holdTimer.current = null;
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="grid h-16 w-16 place-items-center rounded-xl bg-white/5 text-xs text-white/50 xl:h-20 xl:w-20"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {t("No photo")}
-                      </div>
-                    )}
-
-                    <div className="max-w-[220px] xl:max-w-[260px]">
-                      {(() => {
-                        const { first, second } = formatInv(f.invNumber);
-                        return (
-                          <div className="text-xs leading-tight text-blue-300">
-                            <div className="max-w-[220px] truncate xl:max-w-[260px]">
-                              {first}
-                            </div>
-                            {second ? (
-                              <div className="max-w-[220px] truncate text-[0.7rem] text-blue-200 xl:max-w-[260px]">
-                                {second}
-                              </div>
-                            ) : null}
-                          </div>
+                {/* Photo cell */}
+                <td
+                  className="px-4 py-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {f.photo ? (
+                    <img
+                      src={f.photo}
+                      alt={f.name || f.invNumber}
+                      className="h-14 w-14 cursor-zoom-in rounded-xl object-cover xl:h-16 xl:w-16"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setModalPhoto(f.photo);
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        holdTimer.current = setTimeout(
+                          () => setModalPhoto(f.photo),
+                          600
                         );
-                      })()}
+                      }}
+                      onMouseUp={(e) => {
+                        e.stopPropagation();
+                        if (holdTimer.current) {
+                          clearTimeout(holdTimer.current);
+                          holdTimer.current = null;
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        if (holdTimer.current) {
+                          clearTimeout(holdTimer.current);
+                          holdTimer.current = null;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="grid h-14 w-14 place-items-center rounded-xl bg-white/5 text-[10px] text-white/40 xl:h-16 xl:w-16">
+                      {t("No photo")}
                     </div>
-                  </div>
+                  )}
                 </td>
 
-                <td className="px-6 py-4 text-white">{f.name}</td>
-                <td className="px-6 py-4 text-white/80">{f.type || "—"}</td>
-                <td className="px-6 py-4 text-white/80">
+                {/* Inv # cell — nowrap so full number shows */}
+                <td className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-blue-300">
+                  {f.invNumber}
+                </td>
+
+                <td className="px-4 py-3 text-white">{f.name}</td>
+                <td className="px-4 py-3 text-white/80">{f.type || "—"}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-white/80">
                   {formatPrice(f.priceKgs)}
                 </td>
-                <td className="px-6 py-4 text-white/80">
-                  {f.building || "—"} {f.room ? `• ${f.room}` : ""}
+                <td className="px-4 py-3 text-white/80">
+                  {f.building || "—"}{f.room ? ` • ${f.room}` : ""}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-4 py-3">
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/80">
                     {f.status}
                   </span>
                 </td>
-                <td className="px-6 py-4">
+                {/* Inspection — nowrap so badge never clips */}
+                <td className="whitespace-nowrap px-4 py-3">
                   <span
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
                   >
                     <span>{f.inspection.icon}</span>
                     <span>{f.inspection.label}</span>
@@ -507,7 +485,7 @@ function FurnitureList() {
 
                 {canManageAssets && (
                   <td
-                    className="whitespace-nowrap px-6 py-4"
+                    className="whitespace-nowrap px-4 py-3"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center gap-3">
@@ -535,7 +513,7 @@ function FurnitureList() {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={canManageAssets ? 8 : 7}
+                  colSpan={canManageAssets ? 9 : 8}
                   className="px-6 py-10 text-center text-white/55"
                 >
                   {t("No results")}
@@ -546,6 +524,7 @@ function FurnitureList() {
         </table>
       </div>
 
+      {/* ── MOBILE / TABLET CARDS ── */}
       <div className="mt-5 grid grid-cols-1 gap-3 lg:hidden">
         {filtered.map((f) => (
           <Link
@@ -596,20 +575,8 @@ function FurnitureList() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold leading-tight text-blue-400">
-                  {(() => {
-                    const { first, second } = formatInv(f.invNumber);
-                    return (
-                      <>
-                        <div className="truncate">{first}</div>
-                        {second ? (
-                          <div className="truncate text-[0.7rem] text-blue-300">
-                            {second}
-                          </div>
-                        ) : null}
-                      </>
-                    );
-                  })()}
+                <div className="text-xs font-semibold text-blue-400">
+                  {f.invNumber}
                 </div>
 
                 <div className="mt-2.5 break-words text-base font-medium text-white sm:mt-3 sm:text-lg">
@@ -625,7 +592,7 @@ function FurnitureList() {
                 </div>
 
                 <div className="mt-2.5 text-sm text-white/55">
-                  {t("Location")}: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
+                  {t("Location")}: {f.building || "—"}{f.room ? ` • ${f.room}` : ""}
                 </div>
 
                 <div className="mt-2.5 flex flex-wrap gap-2">
@@ -634,7 +601,7 @@ function FurnitureList() {
                   </span>
 
                   <span
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
                   >
                     <span>{f.inspection.icon}</span>
                     <span>{f.inspection.label}</span>
@@ -676,6 +643,7 @@ function FurnitureList() {
         )}
       </div>
 
+      {/* ── PHOTO MODAL ── */}
       {modalPhoto && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3 sm:px-4"
@@ -702,6 +670,7 @@ function FurnitureList() {
         </div>
       )}
 
+      {/* ── DELETE MODAL ── */}
       {deleteTarget && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
