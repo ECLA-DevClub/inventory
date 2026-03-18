@@ -224,6 +224,13 @@ function FurnitureDetail() {
     }
   };
 
+  const actionBtnClass =
+    "w-full rounded-[1.1rem] px-4 py-3 text-center text-sm font-medium transition sm:rounded-[1.25rem] sm:px-5 sm:py-3";
+  const cardClass =
+    "rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl sm:rounded-[1.75rem] sm:p-5";
+  const subCardClass =
+    "rounded-[1.15rem] border border-white/10 bg-white/[0.04] px-4 py-4";
+
   if (loading) {
     return (
       <div className="glass-strong rounded-[2rem] border border-white/10 p-8 text-white">
@@ -257,29 +264,27 @@ function FurnitureDetail() {
   return (
     <>
       <div className="relative animate-fadeIn text-white">
-        <div className="glass-strong relative overflow-hidden rounded-[2rem] border border-white/15 p-5 shadow-2xl shadow-black/20 sm:p-6 lg:p-8">
+        <div className="glass-strong relative overflow-hidden rounded-[1.75rem] border border-white/15 p-4 shadow-2xl shadow-black/20 sm:rounded-[2rem] sm:p-5 lg:p-6 xl:p-8">
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-0 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
 
-          <div className="relative z-10 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="min-w-0 space-y-6">
-              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
-                <div className="text-xs uppercase tracking-[0.18em] text-white/45">
+          <div className="relative z-10 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 space-y-5 sm:space-y-6">
+              <div className={cardClass}>
+                <div className="text-[11px] uppercase tracking-[0.18em] text-white/45 sm:text-xs">
                   {t("Inventory Number")}
                 </div>
 
-                <div className="mt-3 break-words text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                <div className="mt-3 break-words text-2xl font-semibold tracking-tight text-white sm:text-3xl lg:text-4xl">
                   {item.inv_number ?? `INV-${item.id}`}
                 </div>
 
-                <div className="mt-4 break-words text-xl text-white/85 sm:text-2xl">
+                <div className="mt-4 break-words text-lg text-white/85 sm:text-xl lg:text-2xl">
                   {item.name}
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="liquid-badge">
-                    {item.condition_name || "—"}
-                  </span>
+                  <span className="liquid-badge">{item.condition_name || "—"}</span>
                   <span className="liquid-badge">{item.type_name || "—"}</span>
                   <span className="liquid-badge">
                     {item.price_kgs
@@ -289,37 +294,37 @@ function FurnitureDetail() {
                 </div>
 
                 {photoSrc && (
-                  <div className="mt-6">
+                  <div className="mt-5 sm:mt-6">
                     <img
                       src={photoSrc}
                       alt={item.name}
-                      className="h-auto max-h-[420px] w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20"
+                      className="h-auto max-h-[420px] w-full rounded-[1.25rem] border border-white/10 object-cover shadow-lg shadow-black/20 sm:rounded-[1.5rem]"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className={cardClass}>
                   <div className="mb-3 text-sm font-medium text-white/55">
                     {t("Location")}
                   </div>
 
-                  <div className="break-words text-xl font-semibold text-white">
+                  <div className="break-words text-lg font-semibold text-white sm:text-xl">
                     {item.building_name || "—"}
                   </div>
 
-                  <div className="mt-2 break-words text-base text-white/70">
+                  <div className="mt-2 break-words text-sm text-white/70 sm:text-base">
                     {t("Room")} {item.room_name || "—"}
                   </div>
                 </div>
 
-                <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+                <div className={cardClass}>
                   <div className="mb-3 text-sm font-medium text-white/55">
                     {t("Asset Value")}
                   </div>
 
-                  <div className="text-2xl font-semibold text-yellow-200">
+                  <div className="break-words text-xl font-semibold text-yellow-200 sm:text-2xl">
                     {item.price_kgs
                       ? `${Number(item.price_kgs).toLocaleString(locale)} KGS`
                       : "—"}
@@ -333,38 +338,38 @@ function FurnitureDetail() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className={cardClass}>
                   <div className="mb-3 text-sm font-medium text-white/55">
                     {t("Manufacturer")}
                   </div>
-                  <div className="break-words text-xl font-semibold text-white">
+                  <div className="break-words text-lg font-semibold text-white sm:text-xl">
                     {item.manufacturer || "—"}
                   </div>
                 </div>
 
-                <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+                <div className={cardClass}>
                   <div className="mb-3 text-sm font-medium text-white/55">
                     {t("Model")}
                   </div>
-                  <div className="break-words text-xl font-semibold text-white">
+                  <div className="break-words text-lg font-semibold text-white sm:text-xl">
                     {item.model || "—"}
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+              <div className={cardClass}>
                 <div className="mb-3 text-sm font-medium text-white/55">
                   {t("Purchase Date")}
                 </div>
-                <div className="text-xl font-semibold text-white">
+                <div className="break-words text-lg font-semibold text-white sm:text-xl">
                   {item.purchase_date || "—"}
                 </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl sm:p-6">
-                <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:rounded-[1.75rem] sm:p-5">
+                <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
                     <div className="text-sm font-medium text-white/75">
                       Inspection Status
                     </div>
@@ -386,30 +391,30 @@ function FurnitureDetail() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-white/40">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className={subCardClass}>
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-white/40 sm:text-xs">
                       Last inspection
                     </div>
-                    <div className="mt-2 text-base font-medium text-white">
+                    <div className="mt-2 break-words text-sm font-medium text-white sm:text-base">
                       {item.last_condition_check_date || "—"}
                     </div>
                   </div>
 
-                  <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-white/40">
+                  <div className={subCardClass}>
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-white/40 sm:text-xs">
                       Next inspection
                     </div>
-                    <div className="mt-2 text-base font-medium text-white">
+                    <div className="mt-2 break-words text-sm font-medium text-white sm:text-base">
                       {item.next_condition_check_date || "—"}
                     </div>
                   </div>
 
-                  <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-white/40">
+                  <div className={subCardClass}>
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-white/40 sm:text-xs">
                       Check every (days)
                     </div>
-                    <div className="mt-2 text-base font-medium text-white">
+                    <div className="mt-2 break-words text-sm font-medium text-white sm:text-base">
                       {item.condition_check_interval_days || "—"}
                     </div>
                   </div>
@@ -421,7 +426,7 @@ function FurnitureDetail() {
                       type="button"
                       onClick={handleMarkInspected}
                       disabled={inspecting}
-                      className="apple-btn apple-btn-primary w-full rounded-[1.25rem] px-5 py-3 text-sm font-semibold disabled:opacity-60 sm:w-auto"
+                      className="apple-btn apple-btn-primary w-full rounded-[1.1rem] px-4 py-3 text-sm font-semibold disabled:opacity-60 sm:w-auto sm:rounded-[1.25rem] sm:px-5"
                     >
                       {inspecting ? "Saving inspection..." : "Mark as inspected"}
                     </button>
@@ -429,13 +434,13 @@ function FurnitureDetail() {
                 )}
               </div>
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+              <div className={cardClass}>
                 <div className="mb-4 text-sm font-medium text-white/55">
                   {t("QR Code")}
                 </div>
 
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-                  <div className="mx-auto w-full max-w-[320px] rounded-[1.5rem] bg-white p-4 sm:p-5 lg:mx-0">
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-start">
+                  <div className="mx-auto w-full max-w-[280px] rounded-[1.25rem] bg-white p-4 sm:max-w-[320px] sm:rounded-[1.5rem] sm:p-5 xl:mx-0">
                     <img
                       src={qrSrc}
                       alt={`QR ${item.inv_number ?? `INV-${item.id}`}`}
@@ -451,7 +456,7 @@ function FurnitureDetail() {
                     <button
                       onClick={handleDownloadQr}
                       disabled={downloadingQr}
-                      className="apple-btn apple-btn-primary w-full rounded-[1.25rem] px-5 py-3 text-sm font-semibold disabled:opacity-60 sm:w-auto"
+                      className="apple-btn apple-btn-primary w-full rounded-[1.1rem] px-4 py-3 text-sm font-semibold disabled:opacity-60 sm:w-auto sm:rounded-[1.25rem] sm:px-5"
                     >
                       {downloadingQr ? t("Downloading...") : t("Download QR")}
                     </button>
@@ -460,29 +465,29 @@ function FurnitureDetail() {
               </div>
             </div>
 
-            <div className="min-w-0">
-              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6 xl:sticky xl:top-6">
+            <div className="min-w-0 2xl:block">
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl sm:rounded-[1.75rem] sm:p-5 2xl:sticky 2xl:top-6">
                 <div className="mb-4 text-sm font-medium text-white/55">
                   {t("Actions")}
                 </div>
 
                 {error && (
-                  <div className="mb-4 rounded-[1.25rem] border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  <div className="mb-4 rounded-[1.1rem] border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:rounded-[1.25rem]">
                     {error}
                   </div>
                 )}
 
-                <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-1">
                   <button
                     onClick={() => navigate(-1)}
-                    className="apple-btn w-full rounded-[1.25rem] px-5 py-3 text-center text-base font-medium text-white/90"
+                    className={`apple-btn ${actionBtnClass} text-white/90`}
                   >
                     {t("Back")}
                   </button>
 
                   <Link
                     to={`/furniture/${item.id}/label`}
-                    className="w-full rounded-[1.25rem] bg-green-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-green-700"
+                    className={`${actionBtnClass} bg-green-600 text-white hover:bg-green-700`}
                   >
                     {t("Print Label")}
                   </Link>
@@ -490,7 +495,7 @@ function FurnitureDetail() {
                   {canEdit && (
                     <Link
                       to={`/furniture/${item.id}/edit`}
-                      className="w-full rounded-[1.25rem] bg-blue-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-blue-700"
+                      className={`${actionBtnClass} bg-blue-600 text-white hover:bg-blue-700`}
                     >
                       {t("Edit")}
                     </Link>
@@ -501,7 +506,7 @@ function FurnitureDetail() {
                       type="button"
                       onClick={handleMarkInspected}
                       disabled={inspecting}
-                      className="w-full rounded-[1.25rem] bg-emerald-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                      className={`${actionBtnClass} bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60`}
                     >
                       {inspecting ? "Saving inspection..." : "Mark as inspected"}
                     </button>
@@ -511,7 +516,7 @@ function FurnitureDetail() {
                     <button
                       onClick={openDeleteModal}
                       disabled={deleting}
-                      className="w-full rounded-[1.25rem] bg-red-600 px-5 py-3 text-center text-base font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+                      className={`${actionBtnClass} bg-red-600 text-white hover:bg-red-700 disabled:opacity-60`}
                     >
                       {deleting ? t("Deleting") : t("Delete")}
                     </button>
@@ -524,67 +529,67 @@ function FurnitureDetail() {
                   </div>
 
                   <div className="mt-4 space-y-3 text-sm text-white/75">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Type")}</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {item.type_name || "—"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Manufacturer")}</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {item.manufacturer || "—"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Model")}</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {item.model || "—"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Purchase Date")}</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {item.purchase_date || "—"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Condition")}</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {item.condition_name || "—"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Price")}</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {item.price_kgs
                           ? `${Number(item.price_kgs).toLocaleString(locale)} KGS`
                           : "—"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Room")}</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {item.room_name || "—"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">Inspection</span>
-                      <span className="text-right text-white">
+                      <span className="max-w-[60%] text-right text-white">
                         {inspectionMeta.icon} {inspectionMeta.label}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <span className="text-white/50">{t("Role")}</span>
-                      <span className="text-right capitalize text-white">
+                      <span className="max-w-[60%] text-right capitalize text-white">
                         {role}
                       </span>
                     </div>
@@ -597,14 +602,14 @@ function FurnitureDetail() {
           {showDeleteModal && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
               <div
-                className="w-full max-w-md rounded-[2rem] border border-white/15 bg-[#081226]/95 p-6 shadow-2xl shadow-black/40"
+                className="w-full max-w-md rounded-[1.75rem] border border-white/15 bg-[#081226]/95 p-5 shadow-2xl shadow-black/40 sm:rounded-[2rem] sm:p-6"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="mb-2 inline-flex items-center rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-red-200/80">
+                <div className="mb-2 inline-flex items-center rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-red-200/80 sm:text-xs">
                   {t("Confirm delete")}
                 </div>
 
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                <h2 className="mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl">
                   {t("Delete furniture question")}
                 </h2>
 
@@ -625,7 +630,7 @@ function FurnitureDetail() {
                     type="button"
                     onClick={closeDeleteModal}
                     disabled={deleting}
-                    className="apple-btn w-full rounded-[1.25rem] px-5 py-3 text-sm font-medium text-white/85 sm:w-auto"
+                    className="apple-btn w-full rounded-[1.1rem] px-5 py-3 text-sm font-medium text-white/85 sm:w-auto sm:rounded-[1.25rem]"
                   >
                     {t("Cancel")}
                   </button>
@@ -634,7 +639,7 @@ function FurnitureDetail() {
                     type="button"
                     onClick={confirmDelete}
                     disabled={deleting}
-                    className="w-full rounded-[1.25rem] bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60 sm:w-auto sm:min-w-[160px]"
+                    className="w-full rounded-[1.1rem] bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60 sm:w-auto sm:min-w-[160px] sm:rounded-[1.25rem]"
                   >
                     {deleting ? t("Deleting") : t("Yes, delete")}
                   </button>

@@ -241,11 +241,16 @@ function FurnitureList() {
     setPurchaseDateTo("");
   };
 
+  const filterFieldClass =
+    "w-full rounded-[22px] border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-blue-400/40 focus:bg-white/10 sm:rounded-2xl sm:px-4 sm:py-3.5";
+  const filterButtonClass =
+    "w-full rounded-[22px] border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white/85 transition hover:bg-white/[0.10] sm:rounded-2xl sm:px-4 sm:py-3.5";
+
   return (
     <div className="animate-fadeIn">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-white">
+      <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
             {t("Assets")}
           </h1>
           <div className="mt-2 text-sm text-white/55">
@@ -253,34 +258,37 @@ function FurnitureList() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
           <div className="text-sm text-white/60">
             {t("Showing")} <span className="text-white">{filtered.length}</span>
           </div>
 
           {canManageAssets && (
-            <Link to="/furniture/create" className="apple-btn apple-btn-primary">
+            <Link
+              to="/furniture/create"
+              className="apple-btn apple-btn-primary w-full text-center sm:w-auto"
+            >
               {t("New Asset")}
             </Link>
           )}
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4">
+      <div className="mt-5 grid grid-cols-1 gap-4">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("Search assets placeholder")}
-          className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] px-5 py-4 text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
+          className="w-full rounded-[24px] border border-white/10 bg-white/[0.06] px-4 py-3.5 text-sm text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20 sm:rounded-[28px] sm:px-5 sm:py-4 sm:text-base"
         />
       </div>
 
-      <div className="mt-4 rounded-[28px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl sm:rounded-[28px] sm:p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <select
             value={selectedTypeId}
             onChange={(e) => setSelectedTypeId(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+            className={filterFieldClass}
           >
             <option value="" className="bg-slate-900 text-white">
               {t("All types")}
@@ -299,7 +307,7 @@ function FurnitureList() {
           <select
             value={selectedBuildingId}
             onChange={(e) => setSelectedBuildingId(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+            className={filterFieldClass}
           >
             <option value="" className="bg-slate-900 text-white">
               {t("All buildings")}
@@ -318,7 +326,7 @@ function FurnitureList() {
           <select
             value={selectedRoomId}
             onChange={(e) => setSelectedRoomId(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+            className={filterFieldClass}
           >
             <option value="" className="bg-slate-900 text-white">
               {t("All rooms")}
@@ -337,7 +345,7 @@ function FurnitureList() {
           <select
             value={selectedConditionId}
             onChange={(e) => setSelectedConditionId(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+            className={filterFieldClass}
           >
             <option value="" className="bg-slate-900 text-white">
               {t("All conditions")}
@@ -357,27 +365,27 @@ function FurnitureList() {
             value={manufacturerSearch}
             onChange={(e) => setManufacturerSearch(e.target.value)}
             placeholder={t("Search by manufacturer")}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/30 outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+            className={filterFieldClass}
           />
 
           <input
             type="date"
             value={purchaseDateFrom}
             onChange={(e) => setPurchaseDateFrom(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+            className={filterFieldClass}
           />
 
           <input
             type="date"
             value={purchaseDateTo}
             onChange={(e) => setPurchaseDateTo(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white outline-none transition focus:border-blue-400/40 focus:bg-white/10"
+            className={filterFieldClass}
           />
 
           <button
             type="button"
             onClick={resetFilters}
-            className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white/85 transition hover:bg-white/[0.10]"
+            className={filterButtonClass}
           >
             {t("Reset filters")}
           </button>
@@ -388,7 +396,7 @@ function FurnitureList() {
         {listLoading ? t("Loading") : `${t("Found")}: ${filtered.length}`}
       </div>
 
-      <div className="mt-6 hidden overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl md:block">
+      <div className="mt-6 hidden overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl lg:block">
         <table className="w-full text-sm">
           <thead className="border-b border-white/10">
             <tr className="text-white/70">
@@ -418,7 +426,7 @@ function FurnitureList() {
                       <img
                         src={f.photo}
                         alt={f.name || f.invNumber}
-                        className="h-20 w-20 cursor-zoom-in rounded-md object-cover"
+                        className="h-16 w-16 cursor-zoom-in rounded-xl object-cover xl:h-20 xl:w-20"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -447,21 +455,23 @@ function FurnitureList() {
                       />
                     ) : (
                       <div
-                        className="grid h-20 w-20 place-items-center rounded-md bg-white/5 text-xs text-white/50"
+                        className="grid h-16 w-16 place-items-center rounded-xl bg-white/5 text-xs text-white/50 xl:h-20 xl:w-20"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {t("No photo")}
                       </div>
                     )}
 
-                    <div className="max-w-[260px]">
+                    <div className="max-w-[220px] xl:max-w-[260px]">
                       {(() => {
                         const { first, second } = formatInv(f.invNumber);
                         return (
                           <div className="text-xs leading-tight text-blue-300">
-                            <div className="max-w-[260px] truncate">{first}</div>
+                            <div className="max-w-[220px] truncate xl:max-w-[260px]">
+                              {first}
+                            </div>
                             {second ? (
-                              <div className="max-w-[260px] truncate text-[0.7rem] text-blue-200">
+                              <div className="max-w-[220px] truncate text-[0.7rem] text-blue-200 xl:max-w-[260px]">
                                 {second}
                               </div>
                             ) : null}
@@ -535,66 +545,57 @@ function FurnitureList() {
         </table>
       </div>
 
-      <div className="mt-6 flex flex-col gap-4 md:hidden">
-        {canManageAssets && (
-          <div className="flex justify-end">
-            <Link
-              to="/furniture/create"
-              className="apple-btn apple-btn-primary text-sm"
-            >
-              {t("New Asset")}
-            </Link>
-          </div>
-        )}
-
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:hidden">
         {filtered.map((f) => (
           <Link
             key={f.id}
             to={`/furniture/${f.id}`}
-            className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl transition hover:bg-white/5"
+            className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl transition hover:bg-white/5 sm:p-5"
           >
-            <div className="flex items-center gap-3">
-              {f.photo ? (
-                <img
-                  src={f.photo}
-                  alt={f.name || f.invNumber}
-                  className="h-32 w-32 cursor-zoom-in rounded-md object-cover"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setModalPhoto(f.photo);
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    holdTimer.current = setTimeout(
-                      () => setModalPhoto(f.photo),
-                      600
-                    );
-                  }}
-                  onMouseUp={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (holdTimer.current) {
-                      clearTimeout(holdTimer.current);
-                      holdTimer.current = null;
-                    }
-                  }}
-                  onMouseLeave={() => {
-                    if (holdTimer.current) {
-                      clearTimeout(holdTimer.current);
-                      holdTimer.current = null;
-                    }
-                  }}
-                />
-              ) : (
-                <div className="grid h-32 w-32 place-items-center rounded-md bg-white/5 text-xs text-white/50">
-                  {t("No photo")}
-                </div>
-              )}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="shrink-0">
+                {f.photo ? (
+                  <img
+                    src={f.photo}
+                    alt={f.name || f.invNumber}
+                    className="h-40 w-full cursor-zoom-in rounded-[1.25rem] object-cover sm:h-28 sm:w-28"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setModalPhoto(f.photo);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      holdTimer.current = setTimeout(
+                        () => setModalPhoto(f.photo),
+                        600
+                      );
+                    }}
+                    onMouseUp={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (holdTimer.current) {
+                        clearTimeout(holdTimer.current);
+                        holdTimer.current = null;
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (holdTimer.current) {
+                        clearTimeout(holdTimer.current);
+                        holdTimer.current = null;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="grid h-40 w-full place-items-center rounded-[1.25rem] bg-white/5 text-xs text-white/50 sm:h-28 sm:w-28">
+                    {t("No photo")}
+                  </div>
+                )}
+              </div>
 
-              <div className="min-w-0">
-                <div className="max-w-[220px] text-xs font-semibold leading-tight text-blue-400">
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold leading-tight text-blue-400">
                   {(() => {
                     const { first, second } = formatInv(f.invNumber);
                     return (
@@ -610,54 +611,60 @@ function FurnitureList() {
                   })()}
                 </div>
 
-                <div className="mt-3 font-medium text-white">{f.name}</div>
-                <div className="mt-1 text-sm text-white/60">{f.type || "—"}</div>
-                <div className="mt-2 text-sm text-yellow-200">
+                <div className="mt-3 break-words text-lg font-medium text-white">
+                  {f.name}
+                </div>
+
+                <div className="mt-1 text-sm text-white/60">
+                  {f.type || "—"}
+                </div>
+
+                <div className="mt-3 text-sm text-yellow-200">
                   {formatPrice(f.priceKgs)}
                 </div>
-              </div>
-            </div>
 
-            <div className="mt-3 text-xs text-white/50">
-              {t("Location")}: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
-            </div>
+                <div className="mt-3 text-sm text-white/55">
+                  {t("Location")}: {f.building || "—"} {f.room ? `• ${f.room}` : ""}
+                </div>
 
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
-                {f.status}
-              </span>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
+                    {f.status}
+                  </span>
 
-              <span
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
-              >
-                <span>{f.inspection.icon}</span>
-                <span>{f.inspection.label}</span>
-              </span>
-            </div>
-
-            {canManageAssets && (
-              <div className="mt-3 flex gap-3">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    navigate(`/furniture/${f.id}/edit`);
-                  }}
-                  className="rounded-lg bg-white/5 px-3 py-2 text-sm text-white/90 transition hover:bg-white/10"
-                >
-                  {t("Edit")}
-                </button>
-
-                {canDeleteAssets && (
-                  <button
-                    onClick={(e) => handleAskDelete(f, e)}
-                    className="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200 transition hover:bg-red-500/20"
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
                   >
-                    {t("Delete")}
-                  </button>
+                    <span>{f.inspection.icon}</span>
+                    <span>{f.inspection.label}</span>
+                  </span>
+                </div>
+
+                {canManageAssets && (
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(`/furniture/${f.id}/edit`);
+                      }}
+                      className="rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white/90 transition hover:bg-white/10"
+                    >
+                      {t("Edit")}
+                    </button>
+
+                    {canDeleteAssets && (
+                      <button
+                        onClick={(e) => handleAskDelete(f, e)}
+                        className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm text-red-200 transition hover:bg-red-500/20"
+                      >
+                        {t("Delete")}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </Link>
         ))}
 
@@ -670,22 +677,22 @@ function FurnitureList() {
 
       {modalPhoto && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3 sm:px-4"
           onClick={() => setModalPhoto(null)}
         >
           <div
-            className="max-h-[90%] max-w-[90%] p-4"
+            className="max-h-[90%] w-full max-w-4xl p-2 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={modalPhoto}
               alt="Preview"
-              className="max-h-[80vh] max-w-full rounded-lg object-contain"
+              className="max-h-[78vh] w-full rounded-2xl object-contain sm:max-h-[80vh]"
             />
             <div className="mt-3 text-right">
               <button
                 onClick={() => setModalPhoto(null)}
-                className="rounded-lg bg-white/10 px-4 py-2 hover:bg-white/20"
+                className="rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
               >
                 {t("Cancel")}
               </button>
@@ -702,7 +709,7 @@ function FurnitureList() {
           }}
         >
           <div
-            className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f1729]/95 p-6 shadow-2xl backdrop-blur-2xl"
+            className="w-full max-w-md rounded-[1.75rem] border border-white/10 bg-[#0f1729]/95 p-5 shadow-2xl backdrop-blur-2xl sm:rounded-3xl sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-white">
@@ -715,14 +722,16 @@ function FurnitureList() {
 
             <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/85">
               <div className="font-medium">{deleteTarget.name || "—"}</div>
-              <div className="mt-1 text-white/55">{deleteTarget.invNumber}</div>
+              <div className="mt-1 break-all text-white/55">
+                {deleteTarget.invNumber}
+              </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleteLoading}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("Cancel")}
               </button>
@@ -730,7 +739,7 @@ function FurnitureList() {
               <button
                 onClick={handleConfirmDelete}
                 disabled={deleteLoading}
-                className="rounded-2xl border border-red-400/20 bg-red-500/15 px-4 py-2 text-sm text-red-100 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-2xl border border-red-400/20 bg-red-500/15 px-4 py-2.5 text-sm text-red-100 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {deleteLoading ? t("Deleting") : t("Delete")}
               </button>
