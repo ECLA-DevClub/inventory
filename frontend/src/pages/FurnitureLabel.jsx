@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -60,12 +60,14 @@ function FurnitureLabel() {
     item.organization_name ||
     "—";
 
-  const roomValue = useMemo(() => {
-    if (item.room_name && item.building_name) {
-      return `${item.building_name} / ${item.room_name}`;
-    }
-    return item.room_name || item.building_name || "—";
-  }, [item]);
+  let roomValue = "—";
+  if (item.room_name && item.building_name) {
+    roomValue = `${item.building_name} / ${item.room_name}`;
+  } else if (item.room_name) {
+    roomValue = item.room_name;
+  } else if (item.building_name) {
+    roomValue = item.building_name;
+  }
 
   return (
     <div className="animate-fadeIn text-white print:text-black">
