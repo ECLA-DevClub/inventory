@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -15,6 +15,7 @@ function FurnitureLabel() {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [printMode, setPrintMode] = useState("full"); // full | info | qr
 
   useEffect(() => {
     getFurnitureById(id)
@@ -30,8 +31,11 @@ function FurnitureLabel() {
       });
   }, [id, t]);
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrintMode = (mode) => {
+    setPrintMode(mode);
+    setTimeout(() => {
+      window.print();
+    }, 80);
   };
 
   if (loading) {
@@ -49,8 +53,37 @@ function FurnitureLabel() {
   const qrSrc = getFurnitureQrUrl(item.id);
   const photoSrc = resolveAssetUrl(item.photo_url);
 
+  const responsibleValue =
+    item.responsible_person ||
+    item.responsible_name ||
+    item.organization ||
+    item.organization_name ||
+    "—";
+
+  const roomValue = useMemo(() => {
+    if (item.room_name && item.building_name) {
+      return `${item.building_name} / ${item.room_name}`;
+    }
+    return item.room_name || item.building_name || "—";
+  }, [item]);
+
   return (
     <div className="animate-fadeIn text-white print:text-black">
+      <style>
+        {`
+          @media print {
+            @page {
+              size: auto;
+              margin: 10mm;
+            }
+
+            body {
+              background: white !important;
+            }
+          }
+        `}
+      </style>
+
       <div className="mb-6 flex flex-wrap gap-3 print:hidden">
         <button
           onClick={() => navigate(-1)}
@@ -60,10 +93,24 @@ function FurnitureLabel() {
         </button>
 
         <button
-          onClick={handlePrint}
+          onClick={() => handlePrintMode("full")}
           className="rounded-xl bg-green-600 px-4 py-2 transition hover:bg-green-700"
         >
-          {t("Print")}
+          {t("Print QR + Info")}
+        </button>
+
+        <button
+          onClick={() => handlePrintMode("info")}
+          className="rounded-xl bg-blue-600 px-4 py-2 transition hover:bg-blue-700"
+        >
+          {t("Print Info Only")}
+        </button>
+
+        <button
+          onClick={() => handlePrintMode("qr")}
+          className="rounded-xl bg-purple-600 px-4 py-2 transition hover:bg-purple-700"
+        >
+          {t("Print QR Only")}
         </button>
       </div>
 
@@ -78,65 +125,82 @@ function FurnitureLabel() {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-center">
-            <div className="rounded-2xl border border-black/10 p-3 print:rounded-xl print:p-2">
-              <img
-                src={qrSrc}
-                alt={`QR ${item.inv_number || `INV-${item.id}`}`}
-                className="h-48 w-48 object-contain print:h-36 print:w-36"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-2.5 print:mt-3 print:space-y-2">
-            <div>
-              <div className="text-xs text-black/50 print:text-[10px]">
-                {t("Name")}
-              </div>
-              <div className="break-words text-base font-semibold print:text-sm">
-                {item.name || "—"}
+          {(printMode === "full" || printMode === "qr") && (
+            <div className="mt-4 flex justify-center">
+              <div className="rounded-2xl border border-black/10 p-3 print:rounded-xl print:p-2">
+                <img
+                  src={qrSrc}
+                  alt={`QR ${item.inv_number || `INV-${item.id}`}`}
+                  className="h-48 w-48 object-contain print:h-36 print:w-36"
+                />
               </div>
             </div>
+          )}
 
-            <div>
-              <div className="text-xs text-black/50 print:text-[10px]">
-                {t("Type")}
+          {(printMode === "full" || printMode === "info") && (
+            <div className="mt-4 space-y-2.5 print:mt-3 print:space-y-2">
+              <div>
+                <div className="text-xs text-black/50 print:text-[10px]">
+                  {t("ID")}
+                </div>
+                <div className="break-words text-base font-semibold print:text-sm">
+                  {item.id ?? "—"}
+                </div>
               </div>
-              <div className="break-words text-base print:text-sm">
-                {item.type_name || "—"}
+
+              <div>
+                <div className="text-xs text-black/50 print:text-[10px]">
+                  {t("Name")}
+                </div>
+                <div className="break-words text-base font-semibold print:text-sm">
+                  {item.name || "—"}
+                </div>
               </div>
+
+              <div>
+                <div className="text-xs text-black/50 print:text-[10px]">
+                  {t("Room")}
+                </div>
+                <div className="break-words text-base print:text-sm">
+                  {roomValue}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs text-black/50 print:text-[10px]">
+                  {t("Responsible person / Organization")}
+                </div>
+                <div className="break-words text-base print:text-sm">
+                  {responsibleValue}
+                </div>
+              </div>
+
+              {printMode === "full" && (
+                <>
+                  <div>
+                    <div className="text-xs text-black/50 print:text-[10px]">
+                      {t("Type")}
+                    </div>
+                    <div className="break-words text-base print:text-sm">
+                      {item.type_name || "—"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-black/50 print:text-[10px]">
+                      {t("Condition")}
+                    </div>
+                    <div className="break-words text-base print:text-sm">
+                      {item.condition_name || "—"}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+          )}
 
-            <div>
-              <div className="text-xs text-black/50 print:text-[10px]">
-                {t("Building")}
-              </div>
-              <div className="break-words text-base print:text-sm">
-                {item.building_name || "—"}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-xs text-black/50 print:text-[10px]">
-                {t("Room")}
-              </div>
-              <div className="break-words text-base print:text-sm">
-                {item.room_name || "—"}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-xs text-black/50 print:text-[10px]">
-                {t("Condition")}
-              </div>
-              <div className="break-words text-base print:text-sm">
-                {item.condition_name || "—"}
-              </div>
-            </div>
-          </div>
-
-          {photoSrc && (
-            <div className="mt-4 print:mt-3">
+          {printMode === "full" && photoSrc && (
+            <div className="mt-4 print:mt-3 print:hidden">
               <div className="mb-2 text-xs text-black/50 print:text-[10px]">
                 {t("Photo")}
               </div>
