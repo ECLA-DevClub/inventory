@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>QR Коды - Практический Тест #47</title>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+            h1 { text-align: center; color: #333; margin-bottom: 30px; }
+            .page { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+            .label { background: white; border: 1px solid #ddd; border-radius: 12px; padding: 20px; text-align: center; width: 220px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); page-break-inside: avoid; }
+            .label img { width: 180px; height: 180px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #eee; }
+            .title { font-size: 16px; font-weight: 600; color: #111; margin-bottom: 5px; word-wrap: break-word; }
+            .inv { font-size: 13px; color: #666; letter-spacing: 1px; }
+            .btn-print { display: block; width: 200px; margin: 0 auto 30px; padding: 10px 20px; background: #007bff; color: white; text-align: center; text-decoration: none; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; font-size: 16px; }
+            .btn-print:hover { background: #0056b3; }
+            @media print {
+                body { background: white; }
+                .btn-print, h1 { display: none; }
+                .label { border: 1px solid #000; box-shadow: none; break-inside: avoid; }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Практический Тест #47</h1>
+        <button class="btn-print" onclick="window.print()">Распечатать QR Коды</button>
+        <div class="page">
+        <div class="label">
+            <img src="data:image/png;base64,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" alt="QR code" />
+            <div class="title">sada</div>
+            <div class="inv">INV-0001</div>
+        </div></div></body></html>
