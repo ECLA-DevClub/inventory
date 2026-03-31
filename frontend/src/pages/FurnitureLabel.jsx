@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import {
   getFurnitureById,
   getFurnitureQrUrl,
@@ -12,6 +13,8 @@ function FurnitureLabel() {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const stripRef = useRef(null);
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +51,7 @@ function FurnitureLabel() {
   const photoSrc = resolveAssetUrl(item.photo_url);
 
   const invValue = item.inv_number || `INV-${item.id}`;
+
   const buildingValue = item.building_name || "—";
 
   const rawRoomValue =
@@ -69,36 +73,22 @@ function FurnitureLabel() {
     item.responsible_name ||
     item.organization ||
     item.organization_name ||
-    "Responsible";
+    "Ответственный";
 
-  function cutText(pdf, text, maxWidth) {
-    const safeText = String(text ?? "");
-    if (pdf.getTextWidth(safeText) <= maxWidth) return safeText;
-
-    let trimmed = safeText;
-    while (trimmed.length > 0 && pdf.getTextWidth(`${trimmed}...`) > maxWidth) {
-      trimmed = trimmed.slice(0, -1);
-    }
-    return `${trimmed}...`;
-  }
-
-  function drawCenteredCellText(pdf, text, x, y, w, h, fontSize = 9) {
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(fontSize);
-
-    const innerWidth = w - 4;
-    const finalText = cutText(pdf, text, innerWidth);
-    const textWidth = pdf.getTextWidth(finalText);
-
-    const textX = x + (w - textWidth) / 2;
-    const textY = y + h / 2 + 1.6;
-
-    pdf.text(finalText, textX, textY);
-  }
-
-  const downloadStripPdf = () => {
+  const downloadStripPdf = async () => {
     try {
       setDownloading(true);
+
+      const element = stripRef.current;
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
         orientation: "landscape",
@@ -106,56 +96,7 @@ function FurnitureLabel() {
         format: [18, 160],
       });
 
-      const pageWidth = 160;
-      const pageHeight = 18;
-
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, pageWidth, pageHeight, "F");
-
-      const outerX = 1;
-      const outerY = 1;
-      const outerW = 158;
-      const outerH = 16;
-
-      pdf.setDrawColor(0, 0, 0);
-      pdf.setLineWidth(0.3);
-      pdf.rect(outerX, outerY, outerW, outerH);
-
-      const col1 = 34;
-      const col2 = 24;
-      const col3 = 34;
-      const col4 = outerW - col1 - col2 - col3;
-
-      const c1x = outerX;
-      const c2x = c1x + col1;
-      const c3x = c2x + col2;
-      const c4x = c3x + col3;
-
-      pdf.line(c2x, outerY, c2x, outerY + outerH);
-      pdf.line(c3x, outerY, c3x, outerY + outerH);
-      pdf.line(c4x, outerY, c4x, outerY + outerH);
-
-      drawCenteredCellText(pdf, invValue, c1x, outerY, col1, outerH, 9);
-      drawCenteredCellText(pdf, floorValue, c2x, outerY, col2, outerH, 9);
-      drawCenteredCellText(
-        pdf,
-        roomValue === "—" ? "Room" : `Room ${roomValue}`,
-        c3x,
-        outerY,
-        col3,
-        outerH,
-        9
-      );
-      drawCenteredCellText(
-        pdf,
-        responsibleValue,
-        c4x,
-        outerY,
-        col4,
-        outerH,
-        9
-      );
-
+      pdf.addImage(imgData, "PNG", 1, 1, 158, 16);
       pdf.save(`inventory-strip-${item.id}.pdf`);
     } catch (err) {
       console.error("Strip PDF download failed:", err);
@@ -311,7 +252,7 @@ function FurnitureLabel() {
                 <div className="border-r border-black/20 px-2 py-2">{invValue}</div>
                 <div className="border-r border-black/20 px-2 py-2">{floorValue}</div>
                 <div className="border-r border-black/20 px-2 py-2">
-                  {roomValue === "—" ? "Room" : `Room ${roomValue}`}
+                  {roomValue === "—" ? "Кабинет" : `Кабинет ${roomValue}`}
                 </div>
                 <div className="truncate px-2 py-2" title={responsibleValue}>
                   {responsibleValue}
@@ -383,6 +324,87 @@ function FurnitureLabel() {
               />
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="pointer-events-none fixed left-[-9999px] top-0 opacity-100">
+        <div
+          ref={stripRef}
+          style={{
+            width: "1580px",
+            height: "160px",
+            background: "#ffffff",
+            border: "3px solid #111111",
+            display: "grid",
+            gridTemplateColumns: "1.2fr 0.8fr 1fr 1.6fr",
+            fontFamily: "Arial, sans-serif",
+            fontWeight: 700,
+            color: "#111111",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              borderRight: "2px solid #111111",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "42px",
+              padding: "0 16px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {invValue}
+          </div>
+
+          <div
+            style={{
+              borderRight: "2px solid #111111",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "42px",
+              padding: "0 16px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {floorValue}
+          </div>
+
+          <div
+            style={{
+              borderRight: "2px solid #111111",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "42px",
+              padding: "0 16px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {roomValue === "—" ? "Кабинет" : `Кабинет ${roomValue}`}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "42px",
+              padding: "0 16px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {responsibleValue}
+          </div>
         </div>
       </div>
     </div>
