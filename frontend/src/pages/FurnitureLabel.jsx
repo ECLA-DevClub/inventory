@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import {
   getFurnitureById,
@@ -14,12 +13,9 @@ function FurnitureLabel() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const pdfRef = useRef(null);
-
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [pdfMode, setPdfMode] = useState("full"); // full | info | qr
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -58,32 +54,70 @@ function FurnitureLabel() {
     item.organization_name ||
     "—";
 
-  let roomValue = "—";
-  if (item.room_name && item.building_name) {
-    roomValue = `${item.building_name} / ${item.room_name}`;
-  } else if (item.room_name) {
-    roomValue = item.room_name;
-  } else if (item.building_name) {
-    roomValue = item.building_name;
-  }
+  const buildingValue = item.building_name || "";
+  const roomValue = item.room_name || "—";
 
-  const downloadPdf = async (mode) => {
+  const floorValue =
+    item.floor ||
+    item.floor_name ||
+    item.level ||
+    item.level_name ||
+    buildingValue ||
+    "—";
+
+  const invValue = item.inv_number || `INV-${item.id}`;
+
+  const infoLine = [
+    invValue,
+    floorValue,
+    roomValue !== "—" ? `${t("Room")} ${roomValue}` : t("Room unavailable"),
+    responsibleValue !== "—"
+      ? `${t("Responsible")} ${responsibleValue}`
+      : t("Responsible unavailable"),
+  ].join("    ");
+
+  const downloadStripPdf = () => {
     try {
       setDownloading(true);
-      setPdfMode(mode);
 
-      await new Promise((resolve) => setTimeout(resolve, 120));
-
-      const element = pdfRef.current;
-      if (!element) return;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: [20, 150],
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, 150, 20, "F");
+
+      pdf.setDrawColor(0, 0, 0);
+      pdf.rect(1, 1, 148, 18);
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+
+      const maxWidth = 142;
+      const lines = pdf.splitTextToSize(infoLine, maxWidth);
+
+      let y = 11;
+      if (lines.length > 1) {
+        pdf.setFontSize(9);
+        y = 8.5;
+      }
+
+      pdf.text(lines, 4, y);
+
+      pdf.save(`inventory-strip-${item.id}.pdf`);
+    } catch (err) {
+      console.error("Strip PDF download failed:", err);
+      alert(t("Failed to generate strip PDF"));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const downloadInfoPdf = () => {
+    try {
+      setDownloading(true);
 
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -91,34 +125,83 @@ function FurnitureLabel() {
         format: "a4",
       });
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+      let y = 20;
 
-      const margin = 12;
-      const availableWidth = pageWidth - margin * 2;
-      const imgWidth = availableWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text(t("Inventory Information"), 15, y);
 
-      let finalWidth = imgWidth;
-      let finalHeight = imgHeight;
+      y += 14;
+      pdf.setFontSize(12);
 
-      if (finalHeight > pageHeight - margin * 2) {
-        finalHeight = pageHeight - margin * 2;
-        finalWidth = (canvas.width * finalHeight) / canvas.height;
-      }
+      const rows = [
+        [t("ID"), String(item.id ?? "—")],
+        [t("Inventory Number"), invValue],
+        [t("Name"), item.name || "—"],
+        [t("Type"), item.type_name || "—"],
+        [t("Building"), buildingValue || "—"],
+        [t("Room"), roomValue],
+        [t("Responsible"), responsibleValue],
+        [t("Condition"), item.condition_name || "—"],
+      ];
 
-      const x = (pageWidth - finalWidth) / 2;
-      const y = margin;
+      rows.forEach(([label, value]) => {
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`${label}:`, 15, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(String(value), 70, y);
+        y += 10;
+      });
 
-      pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
-
-      const fileSuffix =
-        mode === "full" ? "qr-info" : mode === "info" ? "info-only" : "qr-only";
-
-      pdf.save(`inventory-${item.id}-${fileSuffix}.pdf`);
+      pdf.save(`inventory-info-${item.id}.pdf`);
     } catch (err) {
-      console.error("PDF download failed:", err);
-      alert(t("Failed to generate PDF"));
+      console.error("Info PDF download failed:", err);
+      alert(t("Failed to generate info PDF"));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const downloadQrPdf = async () => {
+    try {
+      setDownloading(true);
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = qrSrc;
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+
+      const imgData = canvas.toDataURL("image/png");
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text(invValue, 105, 20, { align: "center" });
+
+      pdf.addImage(imgData, "PNG", 55, 30, 100, 100);
+
+      pdf.save(`inventory-qr-${item.id}.pdf`);
+    } catch (err) {
+      console.error("QR PDF download failed:", err);
+      alert(t("Failed to generate QR PDF"));
     } finally {
       setDownloading(false);
     }
@@ -135,27 +218,27 @@ function FurnitureLabel() {
         </button>
 
         <button
-          onClick={() => downloadPdf("full")}
+          onClick={downloadStripPdf}
           disabled={downloading}
-          className="rounded-xl bg-green-600 px-4 py-2 transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-orange-600 px-4 py-2 transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {downloading ? t("Generating...") : t("Download PDF: QR + Info")}
+          {downloading ? t("Generating...") : t("Download Strip Label")}
         </button>
 
         <button
-          onClick={() => downloadPdf("info")}
+          onClick={downloadInfoPdf}
           disabled={downloading}
           className="rounded-xl bg-blue-600 px-4 py-2 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {downloading ? t("Generating...") : t("Download PDF: Info Only")}
+          {downloading ? t("Generating...") : t("Download Info PDF")}
         </button>
 
         <button
-          onClick={() => downloadPdf("qr")}
+          onClick={downloadQrPdf}
           disabled={downloading}
           className="rounded-xl bg-purple-600 px-4 py-2 transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {downloading ? t("Generating...") : t("Download PDF: QR Only")}
+          {downloading ? t("Generating...") : t("Download QR PDF")}
         </button>
       </div>
 
@@ -165,8 +248,16 @@ function FurnitureLabel() {
             <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">
               {t("Inventory Label")}
             </div>
-            <div className="mt-2 break-all text-xl font-bold">
-              {item.inv_number || `INV-${item.id}`}
+            <div className="mt-2 break-all text-xl font-bold">{invValue}</div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-dashed border-black/20 bg-black/[0.03] p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/50">
+              {t("Strip preview")}
+            </div>
+            <div className="overflow-x-auto whitespace-nowrap text-sm font-semibold">
+              {invValue} | {floorValue} | {t("Room")} {roomValue} | {t("Responsible")}{" "}
+              {responsibleValue}
             </div>
           </div>
 
@@ -174,13 +265,20 @@ function FurnitureLabel() {
             <div className="rounded-2xl border border-black/10 p-3">
               <img
                 src={qrSrc}
-                alt={`QR ${item.inv_number || `INV-${item.id}`}`}
+                alt={`QR ${invValue}`}
                 className="h-48 w-48 object-contain"
               />
             </div>
           </div>
 
           <div className="mt-4 space-y-2.5">
+            <div>
+              <div className="text-xs text-black/50">{t("ID")}</div>
+              <div className="break-words text-base font-semibold">
+                {item.id ?? "—"}
+              </div>
+            </div>
+
             <div>
               <div className="text-xs text-black/50">{t("Name")}</div>
               <div className="break-words text-base font-semibold">
@@ -189,20 +287,18 @@ function FurnitureLabel() {
             </div>
 
             <div>
-              <div className="text-xs text-black/50">{t("Type")}</div>
-              <div className="break-words text-base">{item.type_name || "—"}</div>
-            </div>
-
-            <div>
               <div className="text-xs text-black/50">{t("Building")}</div>
-              <div className="break-words text-base">
-                {item.building_name || "—"}
-              </div>
+              <div className="break-words text-base">{buildingValue || "—"}</div>
             </div>
 
             <div>
               <div className="text-xs text-black/50">{t("Room")}</div>
-              <div className="break-words text-base">{item.room_name || "—"}</div>
+              <div className="break-words text-base">{roomValue}</div>
+            </div>
+
+            <div>
+              <div className="text-xs text-black/50">{t("Responsible")}</div>
+              <div className="break-words text-base">{responsibleValue}</div>
             </div>
 
             <div>
@@ -223,76 +319,6 @@ function FurnitureLabel() {
               />
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="pointer-events-none fixed left-[-9999px] top-0 opacity-0">
-        <div
-          ref={pdfRef}
-          className="w-[700px] bg-white p-6 text-black"
-        >
-          <div className="rounded-2xl border border-black/10 bg-white p-6">
-            <div className="border-b border-black/10 pb-3 text-center">
-              <div className="text-[11px] uppercase tracking-[0.2em] text-black/50">
-                {t("Inventory Label")}
-              </div>
-              <div className="mt-2 break-all text-2xl font-bold">
-                {item.inv_number || `INV-${item.id}`}
-              </div>
-            </div>
-
-            {(pdfMode === "full" || pdfMode === "qr") && (
-              <div className="mt-5 flex justify-center">
-                <div className="rounded-2xl border border-black/10 p-4">
-                  <img
-                    src={qrSrc}
-                    alt={`QR ${item.inv_number || `INV-${item.id}`}`}
-                    className="h-56 w-56 object-contain"
-                  />
-                </div>
-              </div>
-            )}
-
-            {(pdfMode === "full" || pdfMode === "info") && (
-              <div className="mt-5 space-y-3">
-                <div>
-                  <div className="text-sm text-black/50">{t("ID")}</div>
-                  <div className="text-lg font-semibold">{item.id ?? "—"}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-black/50">{t("Name")}</div>
-                  <div className="text-lg font-semibold">{item.name || "—"}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-black/50">{t("Room")}</div>
-                  <div className="text-lg">{roomValue}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-black/50">
-                    {t("Responsible person / Organization")}
-                  </div>
-                  <div className="text-lg">{responsibleValue}</div>
-                </div>
-
-                {pdfMode === "full" && (
-                  <>
-                    <div>
-                      <div className="text-sm text-black/50">{t("Type")}</div>
-                      <div className="text-lg">{item.type_name || "—"}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm text-black/50">{t("Condition")}</div>
-                      <div className="text-lg">{item.condition_name || "—"}</div>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
