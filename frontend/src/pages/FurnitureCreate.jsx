@@ -34,6 +34,7 @@ function FurnitureCreate() {
     last_condition_check_date: "",
     next_condition_check_date: "",
     condition_check_interval_days: "",
+    responsible_person: "",
     photo: null,
   });
 
@@ -59,8 +60,7 @@ function FurnitureCreate() {
       return {
         label: "Not scheduled",
         icon: "⚪",
-        tone:
-          "border-white/10 bg-white/[0.04] text-white/75",
+        tone: "border-white/10 bg-white/[0.04] text-white/75",
         hint: "Set inspection interval or next inspection date",
       };
     }
@@ -75,8 +75,7 @@ function FurnitureCreate() {
       return {
         label: "Overdue",
         icon: "🔴",
-        tone:
-          "border-red-400/25 bg-red-500/10 text-red-200",
+        tone: "border-red-400/25 bg-red-500/10 text-red-200",
         hint: "Inspection date has already passed",
       };
     }
@@ -85,8 +84,7 @@ function FurnitureCreate() {
       return {
         label: "Due soon",
         icon: "🟡",
-        tone:
-          "border-yellow-400/25 bg-yellow-500/10 text-yellow-100",
+        tone: "border-yellow-400/25 bg-yellow-500/10 text-yellow-100",
         hint: `Inspection due in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
       };
     }
@@ -94,8 +92,7 @@ function FurnitureCreate() {
     return {
       label: "OK",
       icon: "🟢",
-      tone:
-        "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
+      tone: "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
       hint: `Next inspection in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
     };
   }, [formData.next_condition_check_date]);
@@ -158,7 +155,10 @@ function FurnitureCreate() {
   }, [formData.building_id, filteredRooms, formData.room_id]);
 
   useEffect(() => {
-    if (!formData.last_condition_check_date || !formData.condition_check_interval_days) {
+    if (
+      !formData.last_condition_check_date ||
+      !formData.condition_check_interval_days
+    ) {
       return;
     }
 
@@ -189,6 +189,14 @@ function FurnitureCreate() {
     formData.last_condition_check_date,
     formData.condition_check_interval_days,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
 
   const clearFieldError = (name) => {
     setFieldErrors((prev) => {
@@ -243,10 +251,10 @@ function FurnitureCreate() {
 
     if (!file) return;
 
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setFieldErrors((prev) => ({
         ...prev,
-        photo: "Разрешены только JPG и PNG",
+        photo: "Разрешены только JPG, PNG или WEBP",
       }));
       return;
     }
@@ -257,6 +265,10 @@ function FurnitureCreate() {
         photo: "Максимальный размер файла 5 MB",
       }));
       return;
+    }
+
+    if (preview) {
+      URL.revokeObjectURL(preview);
     }
 
     setFormData((prev) => ({ ...prev, photo: file }));
@@ -363,6 +375,10 @@ function FurnitureCreate() {
       return { model: "Проверьте поле Модель" };
     }
 
+    if (lower.includes("responsible")) {
+      return { responsible_person: "Проверьте поле Ответственный" };
+    }
+
     if (lower.includes("last_condition_check_date")) {
       return {
         last_condition_check_date: "Проверьте дату последней проверки",
@@ -418,6 +434,7 @@ function FurnitureCreate() {
           purchase_date: formData.purchase_date || null,
           price_kgs:
             formData.price_kgs === "" ? null : Number(formData.price_kgs),
+          responsible_person: formData.responsible_person.trim() || null,
           last_condition_check_date:
             formData.last_condition_check_date || null,
           next_condition_check_date:
@@ -493,9 +510,8 @@ function FurnitureCreate() {
             {t("Create Asset")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-white/60 sm:text-base">
-            Инвентарный номер будет сгенерирован автоматически. Заполните основные данные,
-            выберите корпус и комнату, укажите модель, производителя, дату приобретения,
-            цену и при желании добавьте фото.
+            Сначала можно быстро сфотографировать мебель, потом заполнить основные
+            данные. Инвентарный номер будет сгенерирован автоматически.
           </p>
         </div>
 
@@ -509,6 +525,48 @@ function FurnitureCreate() {
           onSubmit={handleSubmit}
           className="relative z-10 grid grid-cols-1 gap-6 md:grid-cols-2"
         >
+          <div className="md:col-span-2">
+            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-white/75">
+                    Фото мебели
+                  </label>
+                  <p className="mt-1 text-xs text-white/45">
+                    На телефоне можно сразу открыть камеру и сфотографировать предмет
+                  </p>
+                </div>
+
+                {formData.photo && <span className="liquid-badge">1 file selected</span>}
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+                className={getFieldClass("photo")}
+              />
+              {renderFieldError("photo")}
+
+              {preview && (
+                <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="h-64 w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20 lg:w-72"
+                  />
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
+                    <div className="mb-2 text-base font-medium text-white">
+                      Preview ready
+                    </div>
+                    <div>Фото выбрано и будет загружено после сохранения.</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
               Название
@@ -619,7 +677,11 @@ function FurnitureCreate() {
                 Выберите корпус
               </option>
               {buildingsList.map((building) => (
-                <option key={building.id} value={building.id} className="bg-slate-900">
+                <option
+                  key={building.id}
+                  value={building.id}
+                  className="bg-slate-900"
+                >
                   {building.name}
                 </option>
               ))}
@@ -647,6 +709,21 @@ function FurnitureCreate() {
               ))}
             </select>
             {renderFieldError("room_id")}
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="block text-sm font-medium text-white/70">
+              Ответственный
+            </label>
+            <input
+              type="text"
+              name="responsible_person"
+              placeholder="Например: Рабочий стол 1 / Иванов А.А."
+              value={formData.responsible_person}
+              onChange={handleChange}
+              className={getFieldClass("responsible_person")}
+            />
+            {renderFieldError("responsible_person")}
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -738,49 +815,6 @@ function FurnitureCreate() {
                   {renderFieldError("next_condition_check_date")}
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className="md:col-span-2">
-            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <label className="block text-sm font-medium text-white/75">
-                    {t("Photo (JPG/PNG, max 5MB)")}
-                  </label>
-                  <p className="mt-1 text-xs text-white/45">
-                    Можно загрузить фото мебели сразу после создания
-                  </p>
-                </div>
-
-                {formData.photo && (
-                  <span className="liquid-badge">1 file selected</span>
-                )}
-              </div>
-
-              <input
-                type="file"
-                accept="image/jpeg, image/png"
-                onChange={handlePhotoChange}
-                className={getFieldClass("photo")}
-              />
-              {renderFieldError("photo")}
-
-              {preview && (
-                <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center">
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="h-64 w-full rounded-[1.5rem] border border-white/10 object-cover shadow-lg shadow-black/20 lg:w-72"
-                  />
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65">
-                    <div className="mb-2 text-base font-medium text-white">
-                      Preview ready
-                    </div>
-                    <div>Файл выбран и будет загружен после сохранения.</div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

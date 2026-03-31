@@ -75,6 +75,7 @@ class Furniture(Base):
     purchase_date = Column(Date, nullable=True)
 
     price_kgs = Column(Integer, nullable=True)
+    responsible_person = Column(String, nullable=True)
     photo_url = Column(String, nullable=True)
 
     last_condition_check_date = Column(Date, nullable=True)

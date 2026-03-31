@@ -83,6 +83,7 @@ class FurnitureCreate(BaseModel):
     purchase_date: Optional[date] = None
 
     price_kgs: Optional[int] = None
+    responsible_person: Optional[str] = None
 
     # inspection system
     last_condition_check_date: Optional[date] = None
@@ -103,6 +104,7 @@ class FurnitureUpdate(BaseModel):
     purchase_date: Optional[date] = None
 
     price_kgs: Optional[int] = None
+    responsible_person: Optional[str] = None
 
     # inspection system
     last_condition_check_date: Optional[date] = None
@@ -184,6 +186,7 @@ class FurnitureResponse(BaseModel):
     purchase_date: Optional[date] = None
 
     price_kgs: Optional[int] = None
+    responsible_person: Optional[str] = None
     photo_url: Optional[str] = None
 
     # inspection system

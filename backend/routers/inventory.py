@@ -176,6 +176,7 @@ def furniture_to_response(item: models.Furniture):
         "purchase_date": item.purchase_date,
 
         "price_kgs": item.price_kgs,
+        "responsible_person": item.responsible_person,
         "photo_url": item.photo_url,
 
         "last_condition_check_date": item.last_condition_check_date,
@@ -373,6 +374,7 @@ def create_furniture(
         manufacturer=item.manufacturer,
         purchase_date=item.purchase_date,
         price_kgs=item.price_kgs,
+        responsible_person=item.responsible_person,
         last_condition_check_date=item.last_condition_check_date,
         next_condition_check_date=item.next_condition_check_date,
         condition_check_interval_days=item.condition_check_interval_days,
@@ -433,6 +435,7 @@ def update_furniture(
     item.manufacturer = item_data.manufacturer
     item.purchase_date = item_data.purchase_date
     item.price_kgs = item_data.price_kgs
+    item.responsible_person = item_data.responsible_person
 
     item.last_condition_check_date = item_data.last_condition_check_date
     item.next_condition_check_date = item_data.next_condition_check_date
