@@ -287,7 +287,7 @@ function FurnitureCreate() {
     }
 
     if (!formData.building_id) {
-      errors.building_id = "Выберите корпус";
+      errors.building_id = "Выберите этаж";
     }
 
     if (!formData.room_id) {
@@ -348,7 +348,7 @@ function FurnitureCreate() {
     }
 
     if (lower.includes("building_id")) {
-      return { building_id: "Проверьте поле Корпус" };
+      return { building_id: "Проверьте поле Этаж" };
     }
 
     if (lower.includes("room_id")) {
@@ -665,7 +665,7 @@ function FurnitureCreate() {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Корпус
+              Этаж
             </label>
             <select
               name="building_id"
@@ -674,7 +674,7 @@ function FurnitureCreate() {
               className={getFieldClass("building_id")}
             >
               <option value="" className="bg-slate-900">
-                Выберите корпус
+                Выберите этаж
               </option>
               {buildingsList.map((building) => (
                 <option
