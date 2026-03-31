@@ -15,6 +15,7 @@ function FurnitureLabel() {
   const navigate = useNavigate();
 
   const stripRef = useRef(null);
+  const infoRef = useRef(null);
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -106,9 +107,20 @@ function FurnitureLabel() {
     }
   };
 
-  const downloadInfoPdf = () => {
+  const downloadInfoPdf = async () => {
     try {
       setDownloading(true);
+
+      const element = infoRef.current;
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -116,33 +128,18 @@ function FurnitureLabel() {
         format: "a4",
       });
 
-      let y = 20;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const usableWidth = pageWidth - margin * 2;
+      const imgHeight = (canvas.height * usableWidth) / canvas.width;
 
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(18);
-      pdf.text("Inventory Information", 15, y);
-
-      y += 14;
-      pdf.setFontSize(12);
-
-      const rows = [
-        ["ID", String(item.id ?? "—")],
-        ["Inventory Number", invValue],
-        ["Name", item.name || "—"],
-        ["Building", buildingValue],
-        ["Floor", floorValue],
-        ["Room", roomValue],
-        ["Responsible", responsibleValue],
-        ["Condition", item.condition_name || "—"],
-      ];
-
-      rows.forEach(([label, value]) => {
-        pdf.setFont("helvetica", "bold");
-        pdf.text(`${label}:`, 15, y);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(String(value), 70, y);
-        y += 10;
-      });
+      if (imgHeight <= pageHeight - margin * 2) {
+        pdf.addImage(imgData, "PNG", margin, margin, usableWidth, imgHeight);
+      } else {
+        const usableHeight = pageHeight - margin * 2;
+        pdf.addImage(imgData, "PNG", margin, margin, usableWidth, usableHeight);
+      }
 
       pdf.save(`inventory-info-${item.id}.pdf`);
     } catch (err) {
@@ -405,6 +402,64 @@ function FurnitureLabel() {
           >
             {responsibleValue}
           </div>
+        </div>
+      </div>
+
+      <div className="pointer-events-none fixed left-[-9999px] top-0 opacity-100">
+        <div
+          ref={infoRef}
+          style={{
+            width: "794px",
+            background: "#ffffff",
+            color: "#111111",
+            fontFamily: "Arial, sans-serif",
+            padding: "40px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "32px",
+              fontWeight: 700,
+              marginBottom: "28px",
+            }}
+          >
+            Inventory Information
+          </div>
+
+          {[
+            ["ID", String(item.id ?? "—")],
+            ["Inventory Number", invValue],
+            ["Name", item.name || "—"],
+            ["Building", buildingValue],
+            ["Floor", floorValue],
+            ["Room", roomValue],
+            ["Responsible", responsibleValue],
+            ["Condition", item.condition_name || "—"],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "220px 1fr",
+                gap: "16px",
+                marginBottom: "18px",
+                alignItems: "start",
+                fontSize: "24px",
+                lineHeight: 1.4,
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{label}:</div>
+              <div
+                style={{
+                  wordBreak: "break-word",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {String(value)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
