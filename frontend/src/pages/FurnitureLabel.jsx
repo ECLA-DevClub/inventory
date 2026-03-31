@@ -53,12 +53,12 @@ function FurnitureLabel() {
   const roomValue = item.room_name || "—";
 
   const floorValue =
-    item.floor ||
-    item.floor_name ||
-    item.level ||
-    item.level_name ||
-    item.building_name ||
-    "—";
+  item.floor ||
+  item.floor_name ||
+  (item.room_name && /^\d+$/.test(item.room_name)
+    ? `${item.room_name[0]} этаж`
+    : null) ||
+  "—";
 
   const responsibleValue =
     item.responsible_person ||
