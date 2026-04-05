@@ -19,9 +19,14 @@ import schemas
 from auth import require_roles
 from database import get_db
 
+# =========================
+# ИНИЦИАЛИЗАЦИЯ РОУТЕРА С ГЛОБАЛЬНОЙ ЗАЩИТОЙ
+# Все эндпоинты в этом файле теперь требуют авторизации
+# =========================
 router = APIRouter(
     prefix="/furniture",
-    tags=["Inventory"]
+    tags=["Inventory"],
+    dependencies=[Depends(require_roles("admin", "manager", "viewer"))]
 )
 
 
