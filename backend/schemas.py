@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 
 
 # --- АУТЕНТИФИКАЦИЯ ---
@@ -18,7 +18,7 @@ class TokenResponse(BaseModel):
 # --- ПОЛЬЗОВАТЕЛИ ---
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=6, max_length=100, description="Пароль должен быть не менее 6 символов")
 
 
 class UserRoleUpdate(BaseModel):
