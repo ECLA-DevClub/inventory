@@ -1,10 +1,12 @@
 from datetime import datetime, date
-from typing import Optional
-
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, field_validator, Field
 
 
-# --- АУТЕНТИФИКАЦИЯ ---
+# =========================
+# АУТЕНТИФИКАЦИЯ
+# =========================
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -15,7 +17,10 @@ class TokenResponse(BaseModel):
     token_type: str
 
 
-# --- ПОЛЬЗОВАТЕЛИ ---
+# =========================
+# ПОЛЬЗОВАТЕЛИ
+# =========================
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100, description="Пароль должен быть не менее 6 символов")
@@ -34,7 +39,29 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# --- СПРАВОЧНИКИ ---
+# =========================
+# СПРАВОЧНИКИ (References)
+# =========================
+
+# Схемы для СОЗДАНИЯ (используются в POST запросах)
+class FurnitureTypeCreate(BaseModel):
+    name: str
+
+
+class BuildingCreate(BaseModel):
+    name: str
+
+
+class RoomCreate(BaseModel):
+    name: str
+    building_id: int
+
+
+class ConditionCreate(BaseModel):
+    name: str
+
+
+# Схемы для ОТВЕТА (используются в GET запросах)
 class FurnitureTypeResponse(BaseModel):
     id: int
     name: str
@@ -68,24 +95,24 @@ class ConditionResponse(BaseModel):
         from_attributes = True
 
 
-# --- МЕБЕЛЬ (Inventory) ---
+# =========================
+# МЕБЕЛЬ (Inventory)
+# =========================
+
 class FurnitureCreate(BaseModel):
     name: str
     inv_number: Optional[str] = None
-
     type_id: int
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
-
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
-
     price_kgs: Optional[int] = None
     responsible_person: Optional[str] = None
 
-    # inspection system
+    # Система проверок
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
     condition_check_interval_days: Optional[int] = None
@@ -93,20 +120,17 @@ class FurnitureCreate(BaseModel):
 
 class FurnitureUpdate(BaseModel):
     name: str
-
     type_id: int
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
-
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
-
     price_kgs: Optional[int] = None
     responsible_person: Optional[str] = None
 
-    # inspection system
+    # Система проверок
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
     condition_check_interval_days: Optional[int] = None
@@ -118,14 +142,13 @@ class FurnitureUpdate(BaseModel):
     def validate_change_reason(cls, v: str) -> str:
         value = (v or "").strip()
         if len(value) < 5:
-            raise ValueError("Change reason must contain at least 5 characters")
+            raise ValueError("Причина изменения должна содержать минимум 5 символов")
         return value
 
 
 class FurnitureMove(BaseModel):
     building_id: int
     room_id: int
-
     change_reason: str
 
     @field_validator("change_reason")
@@ -133,7 +156,7 @@ class FurnitureMove(BaseModel):
     def validate_change_reason(cls, v: str) -> str:
         value = (v or "").strip()
         if len(value) < 5:
-            raise ValueError("Change reason must contain at least 5 characters")
+            raise ValueError("Причина перемещения должна содержать минимум 5 символов")
         return value
 
 
@@ -146,21 +169,16 @@ class FurnitureDisposalRequest(BaseModel):
     def validate_reason(cls, v: str) -> str:
         value = (v or "").strip()
         if len(value) < 5:
-            raise ValueError("Reason must contain at least 5 characters")
+            raise ValueError("Причина должна содержать минимум 5 символов")
         return value
 
     @field_validator("disposal_type")
     @classmethod
     def validate_disposal_type(cls, v: str) -> str:
         value = (v or "").strip().lower()
-
         allowed = {"writeoff", "disposal", "утилизация", "списание"}
-
         if value not in allowed:
-            raise ValueError(
-                "disposal_type must be one of: writeoff, disposal, списание, утилизация"
-            )
-
+            raise ValueError("Тип списания должен быть: writeoff, disposal, списание или утилизация")
         return value
 
 
@@ -168,28 +186,22 @@ class FurnitureResponse(BaseModel):
     id: int
     inv_number: Optional[str] = None
     name: str
-
     type_id: Optional[int] = None
     type_name: Optional[str] = None
-
     building_id: Optional[int] = None
     building_name: Optional[str] = None
-
     room_id: Optional[int] = None
     room_name: Optional[str] = None
-
     condition_id: Optional[int] = None
     condition_name: Optional[str] = None
-
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
-
     price_kgs: Optional[int] = None
     responsible_person: Optional[str] = None
     photo_url: Optional[str] = None
 
-    # inspection system
+    # Система проверок
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
     condition_check_interval_days: Optional[int] = None
@@ -200,19 +212,19 @@ class FurnitureResponse(BaseModel):
         from_attributes = True
 
 
-# --- ИСТОРИЯ ---
+# =========================
+# ИСТОРИЯ
+# =========================
+
 class FurnitureHistoryResponse(BaseModel):
     id: int
     furniture_id: int
-
     performed_by_user_id: Optional[int] = None
     user_email: str
-
     action: str
     change_type: Optional[str] = None
     reason: Optional[str] = None
     description: Optional[str] = None
-
     created_at: datetime
 
     class Config:
