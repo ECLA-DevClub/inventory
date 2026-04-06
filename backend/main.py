@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 import auth
 import models
+from roles import Role
 from database import SessionLocal, engine
 from routers.auth_router import router as auth_router
 from routers.inventory import router as inventory_router
@@ -134,17 +135,27 @@ def seed_default_users():
             {
                 "email": "admin@example.com",
                 "password": "1234",
-                "role": auth.ROLE_ADMIN,
+                "role": Role.ADMIN.value,
             },
             {
                 "email": "manager@example.com",
                 "password": "1234",
-                "role": auth.ROLE_MANAGER,
+                "role": Role.MANAGER.value,
+            },
+            {
+                "email": "accountant@example.com",
+                "password": "1234",
+                "role": Role.ACCOUNTANT.value,
+            },
+            {
+                "email": "technician@example.com",
+                "password": "1234",
+                "role": Role.TECHNICIAN.value,
             },
             {
                 "email": "viewer@example.com",
                 "password": "1234",
-                "role": auth.ROLE_VIEWER,
+                "role": Role.VIEWER.value,
             },
         ]
 

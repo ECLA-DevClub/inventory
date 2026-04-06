@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Union
 
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 from database import SessionLocal
 from models import User
+from roles import Role
 
 load_dotenv()
 
@@ -18,10 +19,19 @@ SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-dev-key-change-me")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
-ROLE_ADMIN = "admin"
-ROLE_MANAGER = "manager"
-ROLE_VIEWER = "viewer"
-ALLOWED_ROLES = {ROLE_ADMIN, ROLE_MANAGER, ROLE_VIEWER}
+ROLE_ADMIN = Role.ADMIN.value
+ROLE_MANAGER = Role.MANAGER.value
+ROLE_ACCOUNTANT = Role.ACCOUNTANT.value
+ROLE_TECHNICIAN = Role.TECHNICIAN.value
+ROLE_VIEWER = Role.VIEWER.value
+
+ALLOWED_ROLES = {
+    ROLE_ADMIN,
+    ROLE_MANAGER,
+    ROLE_ACCOUNTANT,
+    ROLE_TECHNICIAN,
+    ROLE_VIEWER,
+}
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -43,17 +53,31 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def normalize_role(role: Optional[str]) -> str:
-    if not role:
+<<<<<<< HEAD
+def normalize_role(role: Optional[Union[str, Role]]) -> str:
+    if role is None:
         return ROLE_VIEWER
 
-    role = role.strip().lower()
-    if role not in ALLOWED_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role. Allowed roles: {', '.join(ALLOWED_ROLES)}"
-        )
-    return role
+    if isinstance(role, Role):
+        return role.value
+
+    role_value = role.strip()
+    if not role_value:
+        return ROLE_VIEWER
+
+    role_key = role_value.upper()
+    if role_key in Role.__members__:
+        return Role[role_key].value
+
+    role_value = role_value.lower()
+    if role_value in ALLOWED_ROLES:
+        return role_value
+
+    allowed = ", ".join([r.name for r in Role])
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=f"Invalid role. Allowed roles: {allowed}",
+    )
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -102,7 +126,8 @@ def get_current_user(
     return user
 
 
-def require_roles(*roles: str):
+<<<<<<< HEAD
+def require_roles(*roles: Union[str, Role]):
     normalized_roles = {normalize_role(role) for role in roles}
 
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
