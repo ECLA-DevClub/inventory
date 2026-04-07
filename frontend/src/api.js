@@ -314,6 +314,22 @@ export async function getUsers(token) {
   return res.json();
 }
 
+export async function createUser(data, token) {
+  const res = await fetch(`${API_URL}/users/`, {
+    method: "POST",
+    headers: buildAuthHeaders(token, {
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка создания пользователя");
+  }
+
+  return res.json();
+}
+
 export async function updateUserRole(userId, role, token) {
   const res = await fetch(`${API_URL}/users/${userId}/role`, {
     method: "PUT",

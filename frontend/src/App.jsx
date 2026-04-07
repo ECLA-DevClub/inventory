@@ -11,6 +11,7 @@ import FurnitureDetail from "./pages/FurnitureDetail";
 import FurnitureLabel from "./pages/FurnitureLabel";
 import ScanPage from "./pages/ScanPage";
 import AuditSession from "./pages/AuditSession";
+import AddUser from "./pages/AddUser";
 import { AuthContext } from "./context/AuthContext";
 
 function RoleRoute({ allow, children }) {
@@ -71,6 +72,15 @@ function App() {
           element={
             <RoleRoute allow={["admin", "manager"]}>
               <FurnitureEdit />
+            </RoleRoute>
+          }
+        />
+
+        <Route
+          path="/users/add"
+          element={
+            <RoleRoute allow={["admin"]}>
+              <AddUser />
             </RoleRoute>
           }
         />

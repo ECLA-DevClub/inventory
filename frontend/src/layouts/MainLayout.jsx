@@ -11,6 +11,7 @@ function MainLayout() {
 
   const currentLang = i18n.language?.startsWith("ru") ? "ru" : "en";
   const canManageAssets = role === "admin" || role === "manager";
+  const isAdmin = role === "admin";
 
   useEffect(() => {
     setOpen(false);
@@ -47,12 +48,16 @@ function MainLayout() {
         : "bg-white/[0.04] text-white/70 border border-white/10 hover:bg-white/8 hover:text-white"
     }`;
 
-  const navItems = [
+  const mainNavItems = [
     { to: "/", label: t("Dashboard"), show: true },
     { to: "/furniture", label: t("Assets"), show: true },
     { to: "/furniture/create", label: t("Add Asset"), show: canManageAssets },
     { to: "/scan", label: t("Scan Mode"), show: true },
     { to: "/audit", label: t("Inventory Audit"), show: true },
+  ];
+
+  const adminNavItems = [
+    { to: "/users/add", label: "Add User", show: isAdmin },
   ];
 
   return (
@@ -123,7 +128,7 @@ function MainLayout() {
               </div>
 
               <nav className="flex flex-1 flex-col gap-2 overflow-y-auto text-sm">
-                {navItems
+                {mainNavItems
                   .filter((item) => item.show)
                   .map((item) => (
                     <Link
@@ -135,6 +140,27 @@ function MainLayout() {
                       {item.label}
                     </Link>
                   ))}
+
+                {isAdmin && (
+                  <>
+                    <div className="mt-4 px-2 text-[11px] uppercase tracking-[0.22em] text-white/35">
+                      Management Panel
+                    </div>
+
+                    {adminNavItems
+                      .filter((item) => item.show)
+                      .map((item) => (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setOpen(false)}
+                          className={navLinkClass(item.to)}
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                  </>
+                )}
               </nav>
 
               <div className="mt-5 border-t border-white/10 pt-5">
@@ -180,13 +206,33 @@ function MainLayout() {
               </div>
 
               <nav className="flex flex-col gap-2 text-sm">
-                {navItems
+                {mainNavItems
                   .filter((item) => item.show)
                   .map((item) => (
                     <Link key={item.to} to={item.to} className={navLinkClass(item.to)}>
                       {item.label}
                     </Link>
                   ))}
+
+                {isAdmin && (
+                  <>
+                    <div className="mt-5 px-2 text-[11px] uppercase tracking-[0.22em] text-white/35">
+                      Management Panel
+                    </div>
+
+                    {adminNavItems
+                      .filter((item) => item.show)
+                      .map((item) => (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          className={navLinkClass(item.to)}
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                  </>
+                )}
               </nav>
             </div>
 

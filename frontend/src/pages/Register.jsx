@@ -42,11 +42,12 @@ function Register() {
 
     try {
       await registerUser({
+        full_name: trimmedFullName,
         email: trimmedEmail,
         password,
       });
 
-      setSuccess("First admin account created successfully. Now sign in.");
+      setSuccess("Admin account created successfully. Now sign in.");
       setFullName("");
       setEmail("");
       setPassword("");
@@ -88,7 +89,7 @@ function Register() {
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/65 backdrop-blur-xl">
-            Create the first administrator account for initial setup
+            Create the administrator account for initial setup
           </div>
 
           <form
