@@ -17,6 +17,13 @@ router = APIRouter(
 
 @router.post("/register", response_model=schemas.UserResponse)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    users_count = db.query(models.User).count()
+    if users_count > 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Регистрация доступна только для первого setup"
+        )
+
     existing_user = db.query(models.User).filter(models.User.email == user.email).first()
     if existing_user:
         raise HTTPException(
@@ -29,7 +36,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     new_user = models.User(
         email=user.email,
         hashed_password=hashed_password,
-        role=auth.ROLE_VIEWER
+        role="admin"
     )
 
     db.add(new_user)

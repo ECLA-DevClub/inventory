@@ -53,7 +53,6 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-<<<<<<< HEAD
 def normalize_role(role: Optional[Union[str, Role]]) -> str:
     if role is None:
         return ROLE_VIEWER
@@ -126,7 +125,7 @@ def get_current_user(
     return user
 
 
-<<<<<<< HEAD
+
 def require_roles(*roles: Union[str, Role]):
     normalized_roles = {normalize_role(role) for role in roles}
 
