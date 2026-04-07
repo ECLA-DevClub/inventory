@@ -756,7 +756,7 @@ function FurnitureCreate() {
                     Inspection Status
                   </div>
                   <div className="mt-1 text-xs text-white/45">
-                    Настрой интервал проверки состояния и система покажет статус.
+                    Настрой интервал проверки состояния, и система покажет статус.
                   </div>
                 </div>
 
