@@ -7,4 +7,3 @@ class Role(str, Enum):
     ACCOUNTANT = "accountant"
     TECHNICIAN = "technician"
     VIEWER = "viewer"
-

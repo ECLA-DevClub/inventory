@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import MainLayout from "./layouts/MainLayout";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import FurnitureList from "./pages/FurnitureList";
 import FurnitureCreate from "./pages/FurnitureCreate";
@@ -23,9 +24,28 @@ function RoleRoute({ allow, children }) {
 }
 
 function App() {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, authReady } = useContext(AuthContext);
 
-  if (!isAuthenticated) return <Login />;
+  if (!authReady) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.14),_transparent_28%),linear-gradient(135deg,_#020617_0%,_#0f172a_45%,_#111827_100%)] text-white">
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-white/80 backdrop-blur-xl">
+            Loading...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
 
   return (
     <Routes>

@@ -1,12 +1,13 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+import auth
 import models
 import schemas
-from auth import require_roles, normalize_role
 from database import get_db
+from auth import require_roles, normalize_role
 
 router = APIRouter(
     prefix="/users",
@@ -33,6 +34,32 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     return user
+
+
+@router.post("/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(
+    payload: schemas.AdminUserCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("admin")),
+):
+    existing_user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Пользователь с таким email уже существует"
+        )
+
+    new_user = models.User(
+        full_name=payload.full_name.strip(),
+        email=payload.email,
+        hashed_password=auth.get_password_hash(payload.password),
+        role=normalize_role(payload.role),
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 
 @router.put("/{user_id}/role", response_model=schemas.UserResponse)

@@ -5,9 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-import auth
 import models
-from roles import Role
 from database import SessionLocal, engine
 from routers.auth_router import router as auth_router
 from routers.inventory import router as inventory_router
@@ -38,6 +36,20 @@ def get_existing_columns(table_name: str) -> list[str]:
         return [row[0] for row in result.fetchall()]
 
 
+def ensure_users_schema():
+    columns = get_existing_columns("users")
+
+    with engine.connect() as conn:
+        changed = False
+
+        if "full_name" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN full_name TEXT"))
+            changed = True
+
+        if changed:
+            conn.commit()
+
+
 def ensure_furniture_schema():
     columns = get_existing_columns("furniture")
 
@@ -60,9 +72,9 @@ def ensure_furniture_schema():
             conn.execute(text("ALTER TABLE furniture ADD COLUMN purchase_date DATE"))
             changed = True
 
-        # -------------------------
-        # INSPECTION SYSTEM
-        # -------------------------
+        if "responsible_person" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN responsible_person TEXT"))
+            changed = True
 
         if "last_condition_check_date" not in columns:
             conn.execute(text("ALTER TABLE furniture ADD COLUMN last_condition_check_date DATE"))
@@ -126,57 +138,6 @@ def ensure_furniture_history_schema():
                     )
                 )
                 conn.commit()
-
-
-def seed_default_users():
-    db = SessionLocal()
-    try:
-        users = [
-            {
-                "email": "admin@example.com",
-                "password": "1234",
-                "role": Role.ADMIN.value,
-            },
-            {
-                "email": "manager@example.com",
-                "password": "1234",
-                "role": Role.MANAGER.value,
-            },
-            {
-                "email": "accountant@example.com",
-                "password": "1234",
-                "role": Role.ACCOUNTANT.value,
-            },
-            {
-                "email": "technician@example.com",
-                "password": "1234",
-                "role": Role.TECHNICIAN.value,
-            },
-            {
-                "email": "viewer@example.com",
-                "password": "1234",
-                "role": Role.VIEWER.value,
-            },
-        ]
-
-        for user_data in users:
-            existing_user = (
-                db.query(models.User)
-                .filter(models.User.email == user_data["email"])
-                .first()
-            )
-
-            if not existing_user:
-                new_user = models.User(
-                    email=user_data["email"],
-                    hashed_password=auth.get_password_hash(user_data["password"]),
-                    role=user_data["role"],
-                )
-                db.add(new_user)
-
-        db.commit()
-    finally:
-        db.close()
 
 
 def seed_reference_data():
@@ -257,9 +218,9 @@ def seed_reference_data():
         db.close()
 
 
+ensure_users_schema()
 ensure_furniture_schema()
 ensure_furniture_history_schema()
-seed_default_users()
 seed_reference_data()
 
 app = FastAPI(

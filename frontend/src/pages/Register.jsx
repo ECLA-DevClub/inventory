@@ -1,42 +1,62 @@
-import { useState, useContext, useRef } from "react";
-import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { AuthContext } from "../context/AuthContext";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { registerUser } from "../api";
 
-function Login() {
-  const { t } = useTranslation();
-  const { login } = useContext(AuthContext);
+function Register() {
+  const navigate = useNavigate();
 
-  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
-  const [validationError, setValidationError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [repeatPassword, setRepeatPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showRepeatPassword, setShowRepeatPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const pwdRef = useRef(null);
+  const trimmedFullName = useMemo(() => fullName.trim(), [fullName]);
+  const trimmedEmail = useMemo(() => email.trim(), [email]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setValidationError(null);
+    setError("");
+    setSuccess("");
 
-    if (!username.trim() || !password) {
-      setValidationError("Please fill in all fields");
+    if (!trimmedFullName || !trimmedEmail || !password || !repeatPassword) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (password !== repeatPassword) {
+      setError("Passwords do not match");
       return;
     }
 
     setLoading(true);
-    try {
-      const ok = await login(username.trim(), password);
 
-      if (!ok) {
-        setError("Invalid email or password");
-        setPassword("");
-        pwdRef.current?.focus();
-      }
+    try {
+      await registerUser({
+        email: trimmedEmail,
+        password,
+      });
+
+      setSuccess("First admin account created successfully. Now sign in.");
+      setFullName("");
+      setEmail("");
+      setPassword("");
+      setRepeatPassword("");
+
+      setTimeout(() => {
+        navigate("/");
+      }, 1200);
     } catch (err) {
-      setError("Login error");
+      setError(err?.message || "Registration error");
     } finally {
       setLoading(false);
     }
@@ -62,36 +82,53 @@ function Login() {
                 Product-ready
               </div>
               <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                Inventory System
+                Register
               </h1>
             </div>
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/65 backdrop-blur-xl">
-            Sign in with your registered email and password
+            Create the first administrator account for initial setup
           </div>
 
           <form
             onSubmit={handleSubmit}
             className="space-y-5"
-            aria-label="login-form"
+            aria-label="register-form"
           >
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/70">
+                Full name
+              </label>
+              <input
+                type="text"
+                placeholder="Enter your full name"
+                value={fullName}
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  setError("");
+                  setSuccess("");
+                }}
+                className="w-full rounded-[40px] border border-white/10 bg-white/[0.06] px-6 py-5 text-base text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
+                autoComplete="name"
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white/70">
                 Email
               </label>
               <input
-                type="text"
+                type="email"
                 placeholder="Enter your email"
-                value={username}
+                value={email}
                 onChange={(e) => {
-                  setUsername(e.target.value);
-                  setValidationError(null);
-                  setError(null);
+                  setEmail(e.target.value);
+                  setError("");
+                  setSuccess("");
                 }}
                 className="w-full rounded-[40px] border border-white/10 bg-white/[0.06] px-6 py-5 text-base text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
-                autoComplete="username"
-                aria-label="username"
+                autoComplete="email"
               />
             </div>
 
@@ -102,18 +139,16 @@ function Login() {
 
               <div className="relative">
                 <input
-                  ref={pwdRef}
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    setValidationError(null);
-                    setError(null);
+                    setError("");
+                    setSuccess("");
                   }}
                   className="w-full rounded-[40px] border border-white/10 bg-white/[0.06] px-6 py-5 pr-24 text-base text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
-                  autoComplete="current-password"
-                  aria-label="password"
+                  autoComplete="new-password"
                 />
 
                 <button
@@ -126,15 +161,44 @@ function Login() {
               </div>
             </div>
 
-            {validationError && (
-              <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3 text-sm text-yellow-200">
-                {validationError}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/70">
+                Repeat password
+              </label>
+
+              <div className="relative">
+                <input
+                  type={showRepeatPassword ? "text" : "password"}
+                  placeholder="Repeat your password"
+                  value={repeatPassword}
+                  onChange={(e) => {
+                    setRepeatPassword(e.target.value);
+                    setError("");
+                    setSuccess("");
+                  }}
+                  className="w-full rounded-[40px] border border-white/10 bg-white/[0.06] px-6 py-5 pr-24 text-base text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
+                  autoComplete="new-password"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowRepeatPassword((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+                >
+                  {showRepeatPassword ? "Hide" : "Show"}
+                </button>
               </div>
-            )}
+            </div>
 
             {error && (
               <div className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
+                {success}
               </div>
             )}
 
@@ -166,19 +230,19 @@ function Login() {
                   />
                 </svg>
               )}
-              <span>{loading ? "Signing in..." : "Sign in"}</span>
+              <span>{loading ? "Creating..." : "Create admin account"}</span>
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <span className="text-sm text-white/45">
-              First setup?
+              Already have an account?
             </span>{" "}
             <Link
-              to="/register"
+              to="/"
               className="text-sm font-semibold text-blue-300 transition hover:text-blue-200"
             >
-              Register
+              Sign in
             </Link>
           </div>
         </div>
@@ -187,4 +251,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default Register;

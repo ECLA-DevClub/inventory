@@ -34,9 +34,10 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     hashed_password = auth.get_password_hash(user.password)
 
     new_user = models.User(
+        full_name=user.full_name.strip(),
         email=user.email,
         hashed_password=hashed_password,
-        role="admin"
+        role=auth.ROLE_ADMIN
     )
 
     db.add(new_user)
@@ -67,6 +68,7 @@ def login(
             "sub": str(user.id),
             "email": user.email,
             "role": user.role,
+            "full_name": user.full_name or "",
         },
         expires_delta=access_token_expires
     )

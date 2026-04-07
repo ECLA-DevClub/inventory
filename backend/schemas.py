@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator, Field
 
 
@@ -22,8 +22,32 @@ class TokenResponse(BaseModel):
 # =========================
 
 class UserCreate(BaseModel):
+    full_name: str
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100, description="Пароль должен быть не менее 6 символов")
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        value = (v or "").strip()
+        if len(value) < 2:
+            raise ValueError("Имя и фамилия должны содержать минимум 2 символа")
+        return value
+
+
+class AdminUserCreate(BaseModel):
+    full_name: str
+    email: EmailStr
+    password: str = Field(..., min_length=6, max_length=100, description="Пароль должен быть не менее 6 символов")
+    role: str
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        value = (v or "").strip()
+        if len(value) < 2:
+            raise ValueError("Имя и фамилия должны содержать минимум 2 символа")
+        return value
 
 
 class UserRoleUpdate(BaseModel):
@@ -32,6 +56,7 @@ class UserRoleUpdate(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
+    full_name: Optional[str] = None
     email: EmailStr
     role: str
 
@@ -43,7 +68,6 @@ class UserResponse(BaseModel):
 # СПРАВОЧНИКИ (References)
 # =========================
 
-# Схемы для СОЗДАНИЯ (используются в POST запросах)
 class FurnitureTypeCreate(BaseModel):
     name: str
 
@@ -61,7 +85,6 @@ class ConditionCreate(BaseModel):
     name: str
 
 
-# Схемы для ОТВЕТА (используются в GET запросах)
 class FurnitureTypeResponse(BaseModel):
     id: int
     name: str
@@ -112,7 +135,6 @@ class FurnitureCreate(BaseModel):
     price_kgs: Optional[int] = None
     responsible_person: Optional[str] = None
 
-    # Система проверок
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
     condition_check_interval_days: Optional[int] = None
@@ -130,7 +152,6 @@ class FurnitureUpdate(BaseModel):
     price_kgs: Optional[int] = None
     responsible_person: Optional[str] = None
 
-    # Система проверок
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
     condition_check_interval_days: Optional[int] = None
@@ -201,7 +222,6 @@ class FurnitureResponse(BaseModel):
     responsible_person: Optional[str] = None
     photo_url: Optional[str] = None
 
-    # Система проверок
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
     condition_check_interval_days: Optional[int] = None

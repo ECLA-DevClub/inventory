@@ -125,7 +125,6 @@ def get_current_user(
     return user
 
 
-
 def require_roles(*roles: Union[str, Role]):
     normalized_roles = {normalize_role(role) for role in roles}
 
