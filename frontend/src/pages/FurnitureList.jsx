@@ -147,7 +147,7 @@ function FurnitureList() {
           manufacturer: item.manufacturer || "",
           purchaseDate: item.purchase_date || "",
           priceKgs: item.price_kgs ?? null,
-          photo: resolveAssetUrl(item.photo_url),
+          photo: item.photo_url,
           lastConditionCheckDate: item.last_condition_check_date || "",
           nextConditionCheckDate: item.next_condition_check_date || "",
           conditionCheckIntervalDays:
