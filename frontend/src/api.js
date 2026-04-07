@@ -40,6 +40,19 @@ async function parseError(res, fallbackMessage) {
   throw new Error(normalized);
 }
 
+function getStoredToken() {
+  return localStorage.getItem("access_token") || "";
+}
+
+function buildAuthHeaders(token, extraHeaders = {}) {
+  const finalToken = token || getStoredToken();
+
+  return {
+    ...extraHeaders,
+    ...(finalToken ? { Authorization: `Bearer ${finalToken}` } : {}),
+  };
+}
+
 export function resolveAssetUrl(path) {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
@@ -86,7 +99,7 @@ export async function registerUser(data) {
 
 /* ---------------- FURNITURE ---------------- */
 
-export async function getFurniture(filters = {}) {
+export async function getFurniture(filters = {}, token = "") {
   const params = new URLSearchParams();
 
   Object.entries(filters).forEach(([key, value]) => {
@@ -98,24 +111,35 @@ export async function getFurniture(filters = {}) {
   const query = params.toString();
   const url = `${API_URL}/furniture/${query ? `?${query}` : ""}`;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Не удалось загрузить мебель");
+  const res = await fetch(url, {
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Не удалось загрузить мебель");
+  }
+
   return res.json();
 }
 
-export async function getFurnitureById(id) {
-  const res = await fetch(`${API_URL}/furniture/${id}`);
-  if (!res.ok) throw new Error("Не удалось загрузить мебель");
+export async function getFurnitureById(id, token = "") {
+  const res = await fetch(`${API_URL}/furniture/${id}`, {
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Не удалось загрузить мебель");
+  }
+
   return res.json();
 }
 
 export async function createFurniture(data, token) {
   const res = await fetch(`${API_URL}/furniture/`, {
     method: "POST",
-    headers: {
+    headers: buildAuthHeaders(token, {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    }),
     body: JSON.stringify(data),
   });
 
@@ -129,10 +153,9 @@ export async function createFurniture(data, token) {
 export async function updateFurniture(id, data, token) {
   const res = await fetch(`${API_URL}/furniture/${id}`, {
     method: "PUT",
-    headers: {
+    headers: buildAuthHeaders(token, {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    }),
     body: JSON.stringify(data),
   });
 
@@ -146,9 +169,7 @@ export async function updateFurniture(id, data, token) {
 export async function deleteFurniture(id, token) {
   const res = await fetch(`${API_URL}/furniture/${id}`, {
     method: "DELETE",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildAuthHeaders(token),
   });
 
   if (!res.ok) {
@@ -173,9 +194,7 @@ export async function uploadPhoto(id, file, token) {
 
   const res = await fetch(`${API_URL}/furniture/${id}/photo`, {
     method: "POST",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildAuthHeaders(token),
     body: formData,
   });
 
@@ -189,10 +208,9 @@ export async function uploadPhoto(id, file, token) {
 export async function moveFurniture(id, data, token) {
   const res = await fetch(`${API_URL}/furniture/${id}/move`, {
     method: "POST",
-    headers: {
+    headers: buildAuthHeaders(token, {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    }),
     body: JSON.stringify(data),
   });
 
@@ -206,9 +224,7 @@ export async function moveFurniture(id, data, token) {
 export async function markFurnitureAsInspected(id, token) {
   const res = await fetch(`${API_URL}/furniture/${id}/inspect`, {
     method: "POST",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildAuthHeaders(token),
   });
 
   if (!res.ok) {
@@ -218,9 +234,15 @@ export async function markFurnitureAsInspected(id, token) {
   return res.json();
 }
 
-export async function getFurnitureHistory(id) {
-  const res = await fetch(`${API_URL}/furniture/history/${id}`);
-  if (!res.ok) throw new Error("Ошибка загрузки истории");
+export async function getFurnitureHistory(id, token = "") {
+  const res = await fetch(`${API_URL}/furniture/history/${id}`, {
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка загрузки истории");
+  }
+
   return res.json();
 }
 
@@ -230,27 +252,51 @@ export function getFurnitureQrUrl(id) {
 
 /* ---------------- REFERENCES ---------------- */
 
-export async function getTypes() {
-  const res = await fetch(`${API_URL}/references/types`);
-  if (!res.ok) throw new Error("Ошибка загрузки типов");
+export async function getTypes(token = "") {
+  const res = await fetch(`${API_URL}/references/types`, {
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка загрузки типов");
+  }
+
   return res.json();
 }
 
-export async function getBuildings() {
-  const res = await fetch(`${API_URL}/references/buildings`);
-  if (!res.ok) throw new Error("Ошибка загрузки корпусов");
+export async function getBuildings(token = "") {
+  const res = await fetch(`${API_URL}/references/buildings`, {
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка загрузки корпусов");
+  }
+
   return res.json();
 }
 
-export async function getRooms() {
-  const res = await fetch(`${API_URL}/references/rooms`);
-  if (!res.ok) throw new Error("Ошибка загрузки комнат");
+export async function getRooms(token = "") {
+  const res = await fetch(`${API_URL}/references/rooms`, {
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка загрузки комнат");
+  }
+
   return res.json();
 }
 
-export async function getConditions() {
-  const res = await fetch(`${API_URL}/references/conditions`);
-  if (!res.ok) throw new Error("Ошибка загрузки состояний");
+export async function getConditions(token = "") {
+  const res = await fetch(`${API_URL}/references/conditions`, {
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка загрузки состояний");
+  }
+
   return res.json();
 }
 
@@ -258,9 +304,7 @@ export async function getConditions() {
 
 export async function getUsers(token) {
   const res = await fetch(`${API_URL}/users/`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
   });
 
   if (!res.ok) {
@@ -273,10 +317,9 @@ export async function getUsers(token) {
 export async function updateUserRole(userId, role, token) {
   const res = await fetch(`${API_URL}/users/${userId}/role`, {
     method: "PUT",
-    headers: {
+    headers: buildAuthHeaders(token, {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    }),
     body: JSON.stringify({ role }),
   });
 
