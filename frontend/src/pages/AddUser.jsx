@@ -1,6 +1,6 @@
-import { useMemo, useState, useContext } from "react";
+import { useMemo, useState, useContext, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { createUser } from "../api";
+import { createUser, getUsers } from "../api";
 import { AuthContext } from "../context/AuthContext";
 
 const ROLE_OPTIONS = [
@@ -18,12 +18,39 @@ function AddUser() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("manager");
   const [showPassword, setShowPassword] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [createdUser, setCreatedUser] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(true);
+
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState("");
+  const [usersOpen, setUsersOpen] = useState(true);
+
   const trimmedFullName = useMemo(() => fullName.trim(), [fullName]);
   const trimmedEmail = useMemo(() => email.trim(), [email]);
+
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
+    setUsersError("");
+
+    try {
+      const data = await getUsers(token);
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setUsersError(err?.message || "Failed to load users");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,29 +70,48 @@ function AddUser() {
     setLoading(true);
 
     try {
-      const created = await createUser(
-        {
-          full_name: trimmedFullName,
-          email: trimmedEmail,
-          password,
-          role,
-        },
-        token
-      );
+      const payload = {
+        full_name: trimmedFullName,
+        email: trimmedEmail,
+        password,
+        role,
+      };
 
+      const created = await createUser(payload, token);
+
+      setCreatedUser({
+        id: created.id,
+        full_name: created.full_name || trimmedFullName,
+        email: created.email || trimmedEmail,
+        role: created.role || role,
+        password,
+      });
+
+      setDetailsOpen(true);
+      setUsersOpen(true);
       setSuccess(
         `User created successfully: ${created.full_name || created.email} (${created.role})`
       );
+
       setFullName("");
       setEmail("");
       setPassword("");
       setRole("manager");
+      setShowPassword(false);
+
+      await loadUsers();
     } catch (err) {
       setError(err?.message || "User creation error");
     } finally {
       setLoading(false);
     }
   };
+
+  const detailRowClass =
+    "flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 sm:flex-row sm:items-center sm:justify-between";
+
+  const detailLabelClass = "text-xs uppercase tracking-[0.18em] text-white/40";
+  const detailValueClass = "text-sm font-medium text-white break-all";
 
   return (
     <div className="min-h-screen text-white">
@@ -227,6 +273,127 @@ function AddUser() {
               <span>{loading ? "Creating user..." : "Create user"}</span>
             </button>
           </form>
+        </div>
+
+        {createdUser && (
+          <div className="mt-6 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/20 backdrop-blur-2xl sm:p-7">
+            <button
+              type="button"
+              onClick={() => setDetailsOpen((prev) => !prev)}
+              className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left transition hover:bg-white/[0.07]"
+            >
+              <div>
+                <div className="text-xs uppercase tracking-[0.22em] text-white/40">
+                  Created User Details
+                </div>
+                <div className="mt-1 text-base font-semibold text-white">
+                  {createdUser.full_name}
+                </div>
+              </div>
+
+              <div className="text-2xl leading-none text-white/70">
+                {detailsOpen ? "▾" : "▸"}
+              </div>
+            </button>
+
+            {detailsOpen && (
+              <div className="mt-4 space-y-3">
+                <div className={detailRowClass}>
+                  <div className={detailLabelClass}>Full name</div>
+                  <div className={detailValueClass}>{createdUser.full_name}</div>
+                </div>
+
+                <div className={detailRowClass}>
+                  <div className={detailLabelClass}>Email</div>
+                  <div className={detailValueClass}>{createdUser.email}</div>
+                </div>
+
+                <div className={detailRowClass}>
+                  <div className={detailLabelClass}>Password</div>
+                  <div className={detailValueClass}>{createdUser.password}</div>
+                </div>
+
+                <div className={detailRowClass}>
+                  <div className={detailLabelClass}>Role</div>
+                  <div className={detailValueClass}>
+                    {String(createdUser.role || "").toUpperCase()}
+                  </div>
+                </div>
+
+                <div className={detailRowClass}>
+                  <div className={detailLabelClass}>User ID</div>
+                  <div className={detailValueClass}>{createdUser.id}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mt-6 rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/20 backdrop-blur-2xl sm:p-7">
+          <button
+            type="button"
+            onClick={() => setUsersOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left transition hover:bg-white/[0.07]"
+          >
+            <div>
+              <div className="text-xs uppercase tracking-[0.22em] text-white/40">
+                All Users
+              </div>
+              <div className="mt-1 text-base font-semibold text-white">
+                {usersLoading ? "Loading..." : `${users.length} user(s)`}
+              </div>
+            </div>
+
+            <div className="text-2xl leading-none text-white/70">
+              {usersOpen ? "▾" : "▸"}
+            </div>
+          </button>
+
+          {usersOpen && (
+            <div className="mt-4">
+              {usersLoading ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-white/70">
+                  Loading users...
+                </div>
+              ) : usersError ? (
+                <div className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-4 text-sm text-red-300">
+                  {usersError}
+                </div>
+              ) : users.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-white/70">
+                  No users found.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {users.map((userItem) => (
+                    <div
+                      key={userItem.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="text-base font-semibold text-white break-words">
+                            {userItem.full_name || "No name"}
+                          </div>
+                          <div className="mt-1 text-sm text-white/60 break-all">
+                            {userItem.email}
+                          </div>
+                        </div>
+
+                        <div className="inline-flex w-fit rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
+                          {String(userItem.role || "").toUpperCase()}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-xs uppercase tracking-[0.18em] text-white/35">
+                        User ID: {userItem.id}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

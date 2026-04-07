@@ -18,11 +18,13 @@
   --text-soft: rgba(255, 255, 255, 0.68);
   --text-faint: rgba(255, 255, 255, 0.48);
 
-  --shadow-deep: 0 20px 80px rgba(0, 0, 0, 0.42);
-  --shadow-blue: 0 12px 40px rgba(59, 130, 246, 0.18);
-  --shadow-white: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  --shadow-deep: 0 14px 42px rgba(0, 0, 0, 0.32);
+  --shadow-blue: 0 8px 24px rgba(59, 130, 246, 0.14);
+  --shadow-white: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
-  --blur-main: 24px;
+  --blur-main: 16px;
+  --blur-strong: 20px;
+
   --radius-xl: 20px;
   --radius-2xl: 28px;
 }
@@ -35,20 +37,20 @@ body,
 
 html {
   scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   color: var(--text-main);
   background:
-    radial-gradient(circle at top left, rgba(70, 120, 255, 0.20), transparent 28%),
-    radial-gradient(circle at top right, rgba(120, 90, 255, 0.16), transparent 24%),
-    radial-gradient(circle at bottom center, rgba(0, 180, 255, 0.10), transparent 26%),
+    radial-gradient(circle at top left, rgba(70, 120, 255, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(120, 90, 255, 0.12), transparent 24%),
+    radial-gradient(circle at bottom center, rgba(0, 180, 255, 0.08), transparent 26%),
     linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 48%, var(--bg-3) 100%);
-  background-attachment: fixed;
   overflow-x: hidden;
 }
 
-/* Base transitions everywhere */
+/* Base */
 *,
 *::before,
 *::after {
@@ -59,21 +61,31 @@ button,
 a,
 input,
 select,
-textarea,
+textarea {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.2s ease,
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+
 img,
 span,
 div {
   transition:
-    background-color 0.28s ease,
-    border-color 0.28s ease,
-    color 0.28s ease,
-    box-shadow 0.32s ease,
-    transform 0.28s ease,
-    opacity 0.28s ease,
-    filter 0.28s ease;
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
-/* Selection */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 ::selection {
   background: rgba(96, 165, 250, 0.28);
   color: white;
@@ -81,8 +93,8 @@ div {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.03);
@@ -92,7 +104,7 @@ div {
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /* Premium liquid glass */
@@ -100,11 +112,11 @@ div {
   position: relative;
   background: linear-gradient(
     180deg,
-    rgba(24, 30, 44, 0.56) 0%,
-    rgba(13, 18, 31, 0.42) 100%
+    rgba(24, 30, 44, 0.62) 0%,
+    rgba(13, 18, 31, 0.52) 100%
   );
-  backdrop-filter: blur(var(--blur-main)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--blur-main)) saturate(160%);
+  backdrop-filter: blur(var(--blur-main)) saturate(135%);
+  -webkit-backdrop-filter: blur(var(--blur-main)) saturate(135%);
   border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-deep), var(--shadow-white);
 }
@@ -117,24 +129,26 @@ div {
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.09) 0%,
-    rgba(255, 255, 255, 0.02) 32%,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.02) 34%,
     rgba(255, 255, 255, 0.01) 100%
   );
-  opacity: 0.9;
+  opacity: 0.8;
 }
 
 .glass-strong {
   position: relative;
   background: linear-gradient(
     180deg,
-    rgba(27, 35, 52, 0.70) 0%,
-    rgba(14, 19, 31, 0.54) 100%
+    rgba(27, 35, 52, 0.74) 0%,
+    rgba(14, 19, 31, 0.60) 100%
   );
-  backdrop-filter: blur(30px) saturate(170%);
-  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  backdrop-filter: blur(var(--blur-strong)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur-strong)) saturate(140%);
   border: 1px solid var(--border-strong);
-  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  box-shadow:
+    0 16px 46px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .liquid-card {
@@ -144,7 +158,7 @@ div {
 }
 
 .liquid-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-deep), var(--shadow-blue);
 }
 
@@ -154,8 +168,8 @@ div {
 
 .glow-soft:hover {
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 14px 40px rgba(59, 130, 246, 0.14);
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 10px 24px rgba(59, 130, 246, 0.12);
 }
 
 /* Inputs / selects / textareas */
@@ -173,15 +187,15 @@ div {
 }
 
 .liquid-input:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.11);
 }
 
 .liquid-input:focus {
-  border-color: rgba(96, 165, 250, 0.65);
+  border-color: rgba(96, 165, 250, 0.55);
   box-shadow:
-    0 0 0 4px rgba(59, 130, 246, 0.16),
-    0 10px 30px rgba(59, 130, 246, 0.12);
+    0 0 0 3px rgba(59, 130, 246, 0.14),
+    0 8px 18px rgba(59, 130, 246, 0.10);
 }
 
 /* Buttons */
@@ -200,7 +214,8 @@ div {
   color: white;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 8px 24px rgba(0, 0, 0, 0.20);
+    0 6px 16px rgba(0, 0, 0, 0.18);
+  will-change: transform;
 }
 
 .apple-btn::before {
@@ -213,7 +228,7 @@ div {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.16),
     transparent
   );
   transform: rotate(18deg);
@@ -221,58 +236,58 @@ div {
 }
 
 .apple-btn:hover {
-  transform: translateY(-2px) scale(1.01);
-  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    0 14px 40px rgba(59, 130, 246, 0.20);
+    0 10px 22px rgba(59, 130, 246, 0.16);
 }
 
 .apple-btn:hover::before {
   left: 120%;
   opacity: 1;
-  transition: left 0.8s ease, opacity 0.4s ease;
+  transition: left 0.55s ease, opacity 0.28s ease;
 }
 
 .apple-btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.985);
 }
 
 .apple-btn-primary {
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.92), rgba(37, 99, 235, 0.82));
-  border: 1px solid rgba(147, 197, 253, 0.28);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.92), rgba(37, 99, 235, 0.84));
+  border: 1px solid rgba(147, 197, 253, 0.26);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 12px 32px rgba(37, 99, 235, 0.28);
+    0 10px 24px rgba(37, 99, 235, 0.24);
 }
 
 .apple-btn-primary:hover {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 16px 40px rgba(59, 130, 246, 0.34);
+    0 12px 26px rgba(59, 130, 246, 0.28);
 }
 
 .apple-btn-danger {
-  background: linear-gradient(180deg, rgba(239, 68, 68, 0.90), rgba(220, 38, 38, 0.80));
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.90), rgba(220, 38, 38, 0.82));
   border: 1px solid rgba(252, 165, 165, 0.18);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    0 12px 28px rgba(239, 68, 68, 0.22);
+    0 10px 22px rgba(239, 68, 68, 0.20);
 }
 
 .apple-btn-danger:hover {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 16px 36px rgba(239, 68, 68, 0.30);
+    0 12px 24px rgba(239, 68, 68, 0.24);
 }
 
 /* Hover helpers */
 .hover-lift:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
 }
 
 .hover-scale:hover {
-  transform: scale(1.02);
+  transform: scale(1.01);
 }
 
 .interactive-panel {
@@ -284,11 +299,11 @@ div {
   content: "";
   position: absolute;
   inset: auto -40% -120% auto;
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(circle, rgba(255,255,255,0.10), transparent 68%);
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 68%);
   pointer-events: none;
-  filter: blur(8px);
+  filter: blur(6px);
   opacity: 0;
 }
 
@@ -312,8 +327,7 @@ div {
 }
 
 .liquid-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: scale(1.002);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 /* Badges */
@@ -325,50 +339,46 @@ div {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Modals */
 .modal-backdrop {
-  background: rgba(3, 7, 18, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(3, 7, 18, 0.68);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Page animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
-    filter: blur(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fadeIn 0.28s ease both;
 }
 
 @keyframes pop {
   0% {
-    transform: scale(0.96);
+    transform: scale(0.985);
     opacity: 0;
-    filter: blur(8px);
   }
   100% {
     transform: scale(1);
     opacity: 1;
-    filter: blur(0);
   }
 }
 
 .animate-pop {
-  animation: pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pop 0.2s ease both;
 }
 
 @keyframes floatSoft {
@@ -376,12 +386,12 @@ div {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
   }
 }
 
 .animate-float {
-  animation: floatSoft 4.2s ease-in-out infinite;
+  animation: floatSoft 4.6s ease-in-out infinite;
 }
 
 /* Shine */
@@ -390,7 +400,7 @@ div {
     transform: translateX(-120%) rotate(18deg);
     opacity: 0;
   }
-  25% {
+  20% {
     opacity: 1;
   }
   100% {
@@ -414,7 +424,7 @@ div {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.14),
     transparent
   );
   transform: rotate(18deg);
@@ -422,16 +432,89 @@ div {
 }
 
 .shine-hover:hover::before {
-  animation: shine 0.9s ease;
+  animation: shine 0.65s ease;
+}
+
+/* Performance tuning */
+.glass,
+.glass-strong,
+.apple-btn,
+.liquid-card {
+  transform: translateZ(0);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --blur-main: 10px;
+    --blur-strong: 12px;
+    --shadow-deep: 0 10px 28px rgba(0, 0, 0, 0.24);
+    --shadow-blue: 0 6px 18px rgba(59, 130, 246, 0.10);
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top left, rgba(70, 120, 255, 0.12), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(120, 90, 255, 0.10), transparent 26%),
+      linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 48%, var(--bg-3) 100%);
+  }
+
+  .glass::before,
+  .shine-hover::before,
+  .interactive-panel::after,
+  .apple-btn::before {
+    display: none;
+  }
+
+  .hover-lift:hover,
+  .hover-scale:hover,
+  .liquid-card:hover,
+  .apple-btn:hover {
+    transform: none;
+  }
+
+  .glass,
+  .glass-strong,
+  .liquid-badge,
+  .modal-backdrop {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --blur-main: 6px;
+    --blur-strong: 8px;
+  }
+
+  .glass,
+  .glass-strong {
+    box-shadow:
+      0 8px 20px rgba(0, 0, 0, 0.20),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .apple-btn {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 4px 12px rgba(0, 0, 0, 0.16);
+  }
 }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
   *,
   *::before,
   *::after {
     animation: none !important;
     transition: none !important;
-    scroll-behavior: auto !important;
   }
 }
