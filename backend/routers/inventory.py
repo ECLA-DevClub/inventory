@@ -358,9 +358,19 @@ def create_furniture(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
 ):
-    last_item = db.query(models.Furniture).order_by(models.Furniture.id.desc()).first()
+    # Берём максимальный существующий INV номер + 1
+    last_invs = db.query(models.Furniture.inv_number).filter(
+        models.Furniture.inv_number.isnot(None)
+    ).all()
 
-    next_number = 1 if not last_item else last_item.id + 1
+    numbers = []
+    for (inv,) in last_invs:
+        try:
+            numbers.append(int(inv.replace("INV-", "")))
+        except Exception:
+            pass
+
+    next_number = max(numbers) + 1 if numbers else 1
     inv_number = f"INV-{next_number:04d}"
 
     db_item = models.Furniture(
