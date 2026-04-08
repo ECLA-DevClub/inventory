@@ -20,13 +20,21 @@ from auth import require_roles
 from database import get_db
 
 # =========================
-# ИНИЦИАЛИЗАЦИЯ РОУТЕРА С ГЛОБАЛЬНОЙ ЗАЩИТОЙ
-# Все эндпоинты в этом файле теперь требуют авторизации
+# РОУТЕР С АВТОРИЗАЦИЕЙ (основной)
 # =========================
 router = APIRouter(
     prefix="/furniture",
     tags=["Inventory"],
     dependencies=[Depends(require_roles("admin", "manager", "viewer"))]
+)
+
+# =========================
+# РОУТЕР БЕЗ АВТОРИЗАЦИИ (только для photo-proxy)
+# Браузер загружает <img src="..."> без токена — поэтому этот роутер открытый
+# =========================
+public_router = APIRouter(
+    prefix="/furniture",
+    tags=["Inventory Public"],
 )
 
 
@@ -63,16 +71,6 @@ def get_s3_bucket_name() -> str:
     if not bucket_name:
         raise HTTPException(status_code=500, detail="S3_BUCKET_NAME не задан")
     return bucket_name
-
-
-def get_s3_public_base_url() -> str:
-    public_base_url = os.getenv("S3_PUBLIC_BASE_URL", "").rstrip("/")
-    if not public_base_url:
-        raise HTTPException(
-            status_code=500,
-            detail="S3_PUBLIC_BASE_URL не задан"
-        )
-    return public_base_url
 
 
 def get_s3_key_prefix() -> str:
@@ -226,6 +224,39 @@ def add_history_record(
 
 
 # =========================
+# PHOTO PROXY (ПУБЛИЧНЫЙ — БЕЗ АВТОРИЗАЦИИ)
+# Вынесен в public_router специально, чтобы браузер мог
+# загружать <img src="..."> без токена авторизации
+# =========================
+
+@public_router.get("/photo-proxy/{object_key:path}")
+def get_photo_via_proxy(object_key: str):
+    s3 = get_s3_client()
+    bucket_name = get_s3_bucket_name()
+
+    try:
+        response = s3.get_object(Bucket=bucket_name, Key=object_key)
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code")
+        if error_code in {"NoSuchKey", "404"}:
+            raise HTTPException(status_code=404, detail="Фото не найдено")
+        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
+
+    content_type = response.get("ContentType") or "application/octet-stream"
+    body = response["Body"]
+
+    return StreamingResponse(
+        body,
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400"
+        }
+    )
+
+
+# =========================
 # GET ALL + FILTERS
 # =========================
 
@@ -302,37 +333,6 @@ def get_all_furniture(
 
 
 # =========================
-# PHOTO PROXY (PRIVATE B2)
-# =========================
-
-@router.get("/photo-proxy/{object_key:path}")
-def get_photo_via_proxy(object_key: str):
-    s3 = get_s3_client()
-    bucket_name = get_s3_bucket_name()
-
-    try:
-        response = s3.get_object(Bucket=bucket_name, Key=object_key)
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code")
-        if error_code in {"NoSuchKey", "404"}:
-            raise HTTPException(status_code=404, detail="Фото не найдено")
-        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
-
-    content_type = response.get("ContentType") or "application/octet-stream"
-    body = response["Body"]
-
-    return StreamingResponse(
-        body,
-        media_type=content_type,
-        headers={
-            "Cache-Control": "public, max-age=86400"
-        }
-    )
-
-
-# =========================
 # GET BY ID
 # =========================
 
@@ -366,7 +366,6 @@ def create_furniture(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
 ):
-    # Берём максимальный существующий INV номер + 1
     last_invs = db.query(models.Furniture.inv_number).filter(
         models.Furniture.inv_number.isnot(None)
     ).all()
@@ -531,7 +530,7 @@ def upload_furniture_photo(
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="Файл не выбран")
-    
+
     old_photo_url = item.photo_url
     new_photo_url = upload_file_to_s3(file)
 
