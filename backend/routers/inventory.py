@@ -30,7 +30,6 @@ router = APIRouter(
 
 # =========================
 # РОУТЕР БЕЗ АВТОРИЗАЦИИ (только для photo-proxy)
-# Браузер загружает <img src="..."> без токена — поэтому этот роутер открытый
 # =========================
 public_router = APIRouter(
     prefix="/furniture",
@@ -105,7 +104,6 @@ def build_public_photo_url(object_key: str) -> str:
         "http://localhost:8000"
     ).rstrip("/")
     
-    # ВАЖНО: возвращаем URL через /photo-proxy/
     return f"{backend_url}/furniture/photo-proxy/{quote(object_key, safe='/')}"
 
 
@@ -166,38 +164,29 @@ def furniture_to_response(item: models.Furniture):
     # преобразуем его в полный URL через прокси
     photo_url = item.photo_url
     if photo_url and not photo_url.startswith("http"):
-        # Это старый формат, преобразуем
         photo_url = build_public_photo_url(photo_url)
     
     return {
         "id": item.id,
         "inv_number": item.inv_number,
         "name": item.name,
-
         "type_id": item.type_id,
         "type_name": item.furniture_type.name if item.furniture_type else "",
-
         "building_id": item.building_id,
         "building_name": item.building.name if item.building else "",
-
         "room_id": item.room_id,
         "room_name": item.room.name if item.room else "",
-
         "condition_id": item.condition_id,
         "condition_name": item.condition.name if item.condition else None,
-
         "model": item.model,
         "manufacturer": item.manufacturer,
         "purchase_date": item.purchase_date,
-
         "price_kgs": item.price_kgs,
         "responsible_person": item.responsible_person,
-        "photo_url": photo_url,  # ← Отдаем исправленный URL
-
+        "photo_url": photo_url,
         "last_condition_check_date": item.last_condition_check_date,
         "next_condition_check_date": item.next_condition_check_date,
         "condition_check_interval_days": item.condition_check_interval_days,
-
         "created_at": item.created_at,
     }
 
@@ -234,13 +223,10 @@ def add_history_record(
 
 # =========================
 # PHOTO PROXY (ПУБЛИЧНЫЙ — БЕЗ АВТОРИЗАЦИИ)
-# Вынесен в public_router специально, чтобы браузер мог
-# загружать <img src="..."> без токена авторизации
 # =========================
 
 @public_router.get("/photo-proxy/{object_key:path}")
 def get_photo_via_proxy(object_key: str):
-    """Прокси для отдачи фото из S3 без авторизации"""
     s3 = get_s3_client()
     bucket_name = get_s3_bucket_name()
 

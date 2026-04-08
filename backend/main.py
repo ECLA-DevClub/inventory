@@ -13,7 +13,7 @@ from routers.reference import router as reference_router
 from routers.users import router as users_router
 
 # 👇 ВАЖНО: Импортируем оба роутера из furniture
-from furniture import router as furniture_router, public_router as furniture_public_router
+from inventory import router as furniture_router, public_router as furniture_public_router
 
 models.Base.metadata.create_all(bind=engine)
 
