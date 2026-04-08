@@ -99,11 +99,13 @@ def build_s3_object_key(filename: Optional[str]) -> str:
 
 
 def build_public_photo_url(object_key: str) -> str:
+    """Формирует URL для доступа к фото через прокси (без авторизации)"""
     backend_url = os.getenv(
         "BACKEND_PUBLIC_URL",
         "http://localhost:8000"
     ).rstrip("/")
-
+    
+    # ВАЖНО: возвращаем URL через /photo-proxy/
     return f"{backend_url}/furniture/photo-proxy/{quote(object_key, safe='/')}"
 
 
@@ -160,6 +162,13 @@ def delete_file_from_s3_by_photo_url(photo_url: Optional[str]) -> None:
 # =========================
 
 def furniture_to_response(item: models.Furniture):
+    # ВАЖНО: Если photo_url хранится в старом формате (item_photos/xxx.jpg),
+    # преобразуем его в полный URL через прокси
+    photo_url = item.photo_url
+    if photo_url and not photo_url.startswith("http"):
+        # Это старый формат, преобразуем
+        photo_url = build_public_photo_url(photo_url)
+    
     return {
         "id": item.id,
         "inv_number": item.inv_number,
@@ -183,7 +192,7 @@ def furniture_to_response(item: models.Furniture):
 
         "price_kgs": item.price_kgs,
         "responsible_person": item.responsible_person,
-        "photo_url": item.photo_url,
+        "photo_url": photo_url,  # ← Отдаем исправленный URL
 
         "last_condition_check_date": item.last_condition_check_date,
         "next_condition_check_date": item.next_condition_check_date,
@@ -231,6 +240,7 @@ def add_history_record(
 
 @public_router.get("/photo-proxy/{object_key:path}")
 def get_photo_via_proxy(object_key: str):
+    """Прокси для отдачи фото из S3 без авторизации"""
     s3 = get_s3_client()
     bucket_name = get_s3_bucket_name()
 

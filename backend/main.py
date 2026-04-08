@@ -12,6 +12,9 @@ from routers.inventory import router as inventory_router
 from routers.reference import router as reference_router
 from routers.users import router as users_router
 
+# 👇 ВАЖНО: Импортируем оба роутера из furniture
+from furniture import router as furniture_router, public_router as furniture_public_router
+
 models.Base.metadata.create_all(bind=engine)
 
 
@@ -254,10 +257,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ============================================================
+# 👇 ВАЖНО: ПОДКЛЮЧАЕМ ВСЕ РОУТЕРЫ
+# ============================================================
+
+# Роутеры с авторизацией
 app.include_router(auth_router)
 app.include_router(inventory_router)
 app.include_router(reference_router)
 app.include_router(users_router)
+app.include_router(furniture_router)  # Основной роутер мебели (с авторизацией)
+
+# 👇 КРИТИЧЕСКИ ВАЖНО: Публичный роутер для фото (без авторизации)
+app.include_router(furniture_public_router)
+
+# ============================================================
 
 STATIC_DIR = "static"
 LEGACY_UPLOAD_DIR = os.path.join(STATIC_DIR, "item_photos")
