@@ -9,7 +9,7 @@ import boto3
 import qrcode
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
@@ -357,8 +357,22 @@ def get_furniture_by_id(furniture_id: int, db: Session = Depends(get_db)):
 # =========================
 
 @router.post("/", response_model=List[schemas.FurnitureResponse])
-def create_furniture(
-    item: schemas.FurnitureCreate,
+async def create_furniture(
+    name: str = Form(...),
+    type_id: int = Form(...),
+    building_id: int = Form(...),
+    room_id: int = Form(...),
+    condition_id: Optional[int] = Form(None),
+    model: Optional[str] = Form(None),
+    manufacturer: Optional[str] = Form(None),
+    purchase_date: Optional[date] = Form(None),
+    price_kgs: Optional[int] = Form(None),
+    responsible_person: Optional[str] = Form(None),
+    quantity: int = Form(1),
+    photo: Optional[UploadFile] = File(None),
+    last_condition_check_date: Optional[date] = Form(None),
+    next_condition_check_date: Optional[date] = Form(None),
+    condition_check_interval_days: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
 ):
@@ -376,28 +390,33 @@ def create_furniture(
 
     next_number = max(numbers) + 1 if numbers else 1
     
+    # Обработка фото - загружаем один раз
+    photo_url = None
+    if photo:
+        photo_url = upload_file_to_s3(photo)
+    
     created_items = []
     
     # Цикл для создания quantity объектов
-    for i in range(item.quantity):
+    for i in range(quantity):
         inv_number = f"INV-{next_number + i:04d}"
         
         db_item = models.Furniture(
             inv_number=inv_number,
-            name=item.name,
-            type_id=item.type_id,
-            building_id=item.building_id,
-            room_id=item.room_id,
-            condition_id=item.condition_id,
-            model=item.model,
-            manufacturer=item.manufacturer,
-            purchase_date=item.purchase_date,
-            price_kgs=item.price_kgs,
-            responsible_person=item.responsible_person,
-            photo_url=item.photo_url,  # ← ДОБАВЛЕНО: сохранение URL фото
-            last_condition_check_date=item.last_condition_check_date,
-            next_condition_check_date=item.next_condition_check_date,
-            condition_check_interval_days=item.condition_check_interval_days,
+            name=name,
+            type_id=type_id,
+            building_id=building_id,
+            room_id=room_id,
+            condition_id=condition_id,
+            model=model,
+            manufacturer=manufacturer,
+            purchase_date=purchase_date,
+            price_kgs=price_kgs,
+            responsible_person=responsible_person,
+            photo_url=photo_url,
+            last_condition_check_date=last_condition_check_date,
+            next_condition_check_date=next_condition_check_date,
+            condition_check_interval_days=condition_check_interval_days,
         )
         
         db.add(db_item)
@@ -520,13 +539,13 @@ def delete_furniture(
 
 
 # =========================
-# UPLOAD PHOTO
+# UPLOAD PHOTO - ИСПРАВЛЕНО: photo вместо file
 # =========================
 
 @router.post("/{furniture_id}/photo")
 def upload_furniture_photo(
     furniture_id: int,
-    file: UploadFile = File(...),
+    photo: UploadFile = File(...),  # ← ИСПРАВЛЕНО: photo вместо file
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
 ):
@@ -535,11 +554,11 @@ def upload_furniture_photo(
     if not item:
         raise HTTPException(status_code=404, detail="Мебель не найдена")
 
-    if not file.filename:
+    if not photo.filename:  # ← ИСПРАВЛЕНО: photo.filename
         raise HTTPException(status_code=400, detail="Файл не выбран")
 
     old_photo_url = item.photo_url
-    new_photo_url = upload_file_to_s3(file)
+    new_photo_url = upload_file_to_s3(photo)  # ← ИСПРАВЛЕНО: photo
 
     item.photo_url = new_photo_url
     db.commit()
@@ -623,10 +642,10 @@ def get_furniture_history(furniture_id: int, db: Session = Depends(get_db)):
 
 
 # =========================
-# QR CODE
+# QR CODE (ПУБЛИЧНЫЙ)
 # =========================
 
-@router.get("/{furniture_id}/qr")
+@public_router.get("/{furniture_id}/qr")
 def get_furniture_qr(furniture_id: int, db: Session = Depends(get_db)):
     item = db.query(models.Furniture).filter(models.Furniture.id == furniture_id).first()
 
@@ -655,7 +674,8 @@ def get_furniture_qr(furniture_id: int, db: Session = Depends(get_db)):
         buffer,
         media_type="image/png",
         headers={
-            "Content-Disposition": f'inline; filename="{filename}"'
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Cache-Control": "public, max-age=86400"
         }
     )
 
