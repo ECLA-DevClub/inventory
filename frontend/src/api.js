@@ -136,18 +136,18 @@ export async function getFurnitureById(id, token = "") {
 }
 
 export async function createFurniture(data, token) {
-  // 🔧 ПРАВИЛЬНО: FormData вместо JSON
+  // 🔧 ПРАВИЛЬНО: FormData с префиксом "item."
   const formData = new FormData();
 
   Object.entries(data).forEach(([key, value]) => {
     if (value !== null && value !== undefined && value !== '') {
-      // Для чисел и строк
+      // Для чисел и строк - добавляем префикс "item."
       if (typeof value === 'number' || typeof value === 'string') {
-        formData.append(key, String(value));
+        formData.append(`item.${key}`, String(value));
       }
       // Для файлов
       else if (value instanceof File) {
-        formData.append(key, value);
+        formData.append(`item.${key}`, value);
       }
     }
   });
