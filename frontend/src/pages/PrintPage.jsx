@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { getBuildings, getRooms, getFurniture } from "../api";
-import { useAuth } from "../context/AuthContext";
 
 function PrintPage() {
   const { token } = useAuth();
