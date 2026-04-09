@@ -353,15 +353,16 @@ def get_furniture_by_id(furniture_id: int, db: Session = Depends(get_db)):
 
 
 # =========================
-# CREATE
+# CREATE (С ЦИКЛОМ ДЛЯ quantity)
 # =========================
 
-@router.post("/", response_model=schemas.FurnitureResponse)
+@router.post("/", response_model=List[schemas.FurnitureResponse])
 def create_furniture(
     item: schemas.FurnitureCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
 ):
+    # Получаем последний инвентарный номер
     last_invs = db.query(models.Furniture.inv_number).filter(
         models.Furniture.inv_number.isnot(None)
     ).all()
@@ -374,53 +375,62 @@ def create_furniture(
             pass
 
     next_number = max(numbers) + 1 if numbers else 1
-    inv_number = f"INV-{next_number:04d}"
-
-    db_item = models.Furniture(
-        inv_number=inv_number,
-        name=item.name,
-        type_id=item.type_id,
-        building_id=item.building_id,
-        room_id=item.room_id,
-        condition_id=item.condition_id,
-        model=item.model,
-        manufacturer=item.manufacturer,
-        purchase_date=item.purchase_date,
-        price_kgs=item.price_kgs,
-        responsible_person=item.responsible_person,
-        last_condition_check_date=item.last_condition_check_date,
-        next_condition_check_date=item.next_condition_check_date,
-        condition_check_interval_days=item.condition_check_interval_days,
-    )
-
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-
-    add_history_record(
-        db=db,
-        furniture_id=db_item.id,
-        current_user=current_user,
-        action="create",
-        change_type="create",
-        reason=None,
-        description=f"Создана мебель {db_item.name}",
-    )
-    db.commit()
-
-    db_item = (
-        db.query(models.Furniture)
-        .options(
-            joinedload(models.Furniture.furniture_type),
-            joinedload(models.Furniture.building),
-            joinedload(models.Furniture.room),
-            joinedload(models.Furniture.condition),
+    
+    created_items = []
+    
+    # Цикл для создания quantity объектов
+    for i in range(item.quantity):
+        inv_number = f"INV-{next_number + i:04d}"
+        
+        db_item = models.Furniture(
+            inv_number=inv_number,
+            name=item.name,
+            type_id=item.type_id,
+            building_id=item.building_id,
+            room_id=item.room_id,
+            condition_id=item.condition_id,
+            model=item.model,
+            manufacturer=item.manufacturer,
+            purchase_date=item.purchase_date,
+            price_kgs=item.price_kgs,
+            responsible_person=item.responsible_person,
+            last_condition_check_date=item.last_condition_check_date,
+            next_condition_check_date=item.next_condition_check_date,
+            condition_check_interval_days=item.condition_check_interval_days,
         )
-        .filter(models.Furniture.id == db_item.id)
-        .first()
-    )
-
-    return furniture_to_response(db_item)
+        
+        db.add(db_item)
+        db.commit()
+        db.refresh(db_item)
+        
+        add_history_record(
+            db=db,
+            furniture_id=db_item.id,
+            current_user=current_user,
+            action="create",
+            change_type="create",
+            reason=None,
+            description=f"Создана мебель {db_item.name} (инв. номер: {inv_number})",
+        )
+        
+        # Загружаем связанные данные для ответа
+        db_item = (
+            db.query(models.Furniture)
+            .options(
+                joinedload(models.Furniture.furniture_type),
+                joinedload(models.Furniture.building),
+                joinedload(models.Furniture.room),
+                joinedload(models.Furniture.condition),
+            )
+            .filter(models.Furniture.id == db_item.id)
+            .first()
+        )
+        
+        created_items.append(furniture_to_response(db_item))
+    
+    db.commit()
+    
+    return created_items
 
 
 # =========================
