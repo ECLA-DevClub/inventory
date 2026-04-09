@@ -134,7 +134,8 @@ class FurnitureCreate(BaseModel):
     purchase_date: Optional[date] = None
     price_kgs: Optional[int] = None
     responsible_person: Optional[str] = None
-    quantity: int = 1  # ДОБАВЛЕНО поле quantity со значением по умолчанию 1
+    quantity: int = 1
+    photo_url: Optional[str] = None  # ДОБАВЛЕНО поле для URL фото
 
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
