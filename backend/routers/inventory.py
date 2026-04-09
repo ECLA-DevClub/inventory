@@ -353,7 +353,7 @@ def get_furniture_by_id(furniture_id: int, db: Session = Depends(get_db)):
 
 
 # =========================
-# CREATE (С ЦИКЛОМ ДЛЯ quantity)
+# CREATE (С ЦИКЛОМ ДЛЯ quantity и поддержкой photo_url)
 # =========================
 
 @router.post("/", response_model=List[schemas.FurnitureResponse])
@@ -394,6 +394,7 @@ def create_furniture(
             purchase_date=item.purchase_date,
             price_kgs=item.price_kgs,
             responsible_person=item.responsible_person,
+            photo_url=item.photo_url,  # ← ДОБАВЛЕНО: сохранение URL фото
             last_condition_check_date=item.last_condition_check_date,
             next_condition_check_date=item.next_condition_check_date,
             condition_check_interval_days=item.condition_check_interval_days,
