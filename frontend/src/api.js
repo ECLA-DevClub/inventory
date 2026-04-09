@@ -56,9 +56,7 @@ function buildAuthHeaders(token, extraHeaders = {}) {
 export function resolveAssetUrl(path) {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  // Убираем лишний слэш
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_URL}${cleanPath}`;
+  return `${API_URL}${path}`;
 }
 
 /* ---------------- AUTH ---------------- */
@@ -137,48 +135,19 @@ export async function getFurnitureById(id, token = "") {
 }
 
 export async function createFurniture(data, token) {
-  // Если есть файл, используем FormData
-  if (data.photo && data.photo instanceof File) {
-    const formData = new FormData();
-    
-    // Добавляем все поля в FormData
-    Object.keys(data).forEach(key => {
-      if (key === 'photo') {
-        formData.append('photo', data.photo);
-      } else if (data[key] !== undefined && data[key] !== null) {
-        formData.append(key, String(data[key]));
-      }
-    });
-    
-    const res = await fetch(`${API_URL}/furniture/`, {
-      method: "POST",
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      body: formData,
-    });
-    
-    if (!res.ok) {
-      await parseError(res, "Ошибка создания");
-    }
-    
-    return res.json();
-  } else {
-    // Если нет фото, отправляем JSON
-    const res = await fetch(`${API_URL}/furniture/`, {
-      method: "POST",
-      headers: buildAuthHeaders(token, {
-        "Content-Type": "application/json",
-      }),
-      body: JSON.stringify(data),
-    });
-    
-    if (!res.ok) {
-      await parseError(res, "Ошибка создания");
-    }
-    
-    return res.json();
+  const res = await fetch(`${API_URL}/furniture/`, {
+    method: "POST",
+    headers: buildAuthHeaders(token, {
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка создания");
   }
+
+  return res.json();
 }
 
 export async function updateFurniture(id, data, token) {

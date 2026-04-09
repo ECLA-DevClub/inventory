@@ -13,7 +13,6 @@ from routers.users import router as users_router
 
 # 👇 ВАЖНО: Импортируем оба роутера из furniture
 from routers.inventory import router as furniture_router, public_router as furniture_public_router
-
 models.Base.metadata.create_all(bind=engine)
 
 
@@ -236,38 +235,28 @@ app = FastAPI(
 
 frontend_public_url = os.getenv("FRONTEND_PUBLIC_URL")
 
-# ============================================================
-# 👇 РАСШИРЕННЫЙ СПИСОК allowed_origins (ДОБАВЛЯЕМ ТВОЙ URL)
-# ============================================================
 allowed_origins = [
     "http://localhost:5173",
-    "http://localhost:3000",
     "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
     "https://ecla-devclub.github.io",
     "https://ecla-devclub.github.io/inventory",
     "https://inventory-7cb9.vercel.app",
-    "https://inventory-9ko1.onrender.com",  # 👈 ТВОЙ ФРОНТЕНД НА RENDER
 ]
 
 if frontend_public_url and frontend_public_url not in allowed_origins:
     allowed_origins.append(frontend_public_url)
 
-# ============================================================
-# 👇 НАСТРОЙКА CORS С ПОДДЕРЖКОЙ multipart/form-data
-# ============================================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.(vercel\.app|onrender\.com)",  # Добавил onrender
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],  # Добавлено для лучшей совместимости
 )
 
 # ============================================================
-# 👇 ПОДКЛЮЧАЕМ ВСЕ РОУТЕРЫ
+# 👇 ВАЖНО: ПОДКЛЮЧАЕМ ВСЕ РОУТЕРЫ
 # ============================================================
 
 # Роутеры с авторизацией
@@ -299,13 +288,7 @@ def health_check():
     }
 
 
-@app.options("/{rest_of_path:path}")
-async def preflight_handler():
-    """Обработка preflight запросов для CORS"""
-    return {"message": "OK"}
-
-
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

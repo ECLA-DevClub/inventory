@@ -385,17 +385,13 @@ function FurnitureCreate() {
               ? null
               : Number(formData.condition_check_interval_days),
           quantity: formData.quantity,
-          photo_url: null,
         },
         token
       );
 
-      // Фото загружаем на первый созданный item
+      // Фото загружаем только на первый созданный item
       if (formData.photo) {
-        // response теперь массив (если quantity > 1) или объект (если quantity === 1)
-        const firstItem = Array.isArray(response) ? response[0] : response;
-        const firstId = firstItem?.id;
-        
+        const firstId = response.items?.[0]?.id ?? response.id;
         if (firstId) {
           await uploadPhoto(firstId, formData.photo, token);
         }
