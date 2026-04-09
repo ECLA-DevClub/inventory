@@ -364,41 +364,44 @@ function FurnitureCreate() {
       setError("");
       setFieldErrors({});
 
-      const response = await createFurniture(
-        {
-          name: formData.name.trim(),
-          type_id: Number(formData.type_id),
-          building_id: Number(formData.building_id),
-          room_id: Number(formData.room_id),
-          condition_id:
-            formData.condition_id === "" ? null : Number(formData.condition_id),
-          model: formData.model.trim() || null,
-          manufacturer: formData.manufacturer.trim() || null,
-          purchase_date: formData.purchase_date || null,
-          price_kgs:
-            formData.price_kgs === "" ? null : Number(formData.price_kgs),
-          responsible_person: formData.responsible_person.trim() || null,
-          last_condition_check_date: formData.last_condition_check_date || null,
-          next_condition_check_date: formData.next_condition_check_date || null,
-          condition_check_interval_days:
-            formData.condition_check_interval_days === ""
-              ? null
-              : Number(formData.condition_check_interval_days),
-          quantity: formData.quantity,
-          photo_url: null,
-        },
-        token
-      );
+      // Подготавливаем данные для отправки
+      const submitData = {
+        name: formData.name.trim(),
+        type_id: Number(formData.type_id),
+        building_id: Number(formData.building_id),
+        room_id: Number(formData.room_id),
+        condition_id: formData.condition_id === "" ? null : Number(formData.condition_id),
+        model: formData.model.trim() || null,
+        manufacturer: formData.manufacturer.trim() || null,
+        purchase_date: formData.purchase_date || null,
+        price_kgs: formData.price_kgs === "" ? null : Number(formData.price_kgs),
+        responsible_person: formData.responsible_person.trim() || null,
+        last_condition_check_date: formData.last_condition_check_date || null,
+        next_condition_check_date: formData.next_condition_check_date || null,
+        condition_check_interval_days: formData.condition_check_interval_days === "" ? null : Number(formData.condition_check_interval_days),
+        quantity: formData.quantity,
+        photo: formData.photo, // Передаём файл
+      };
 
-      // Фото загружаем на первый созданный item
+      const response = await createFurniture(submitData, token);
+
+      // Загружаем фото на ВСЕ созданные предметы
       if (formData.photo) {
-        // response теперь массив (если quantity > 1) или объект (если quantity === 1)
-        const firstItem = Array.isArray(response) ? response[0] : response;
-        const firstId = firstItem?.id;
+        const items = Array.isArray(response) ? response : [response];
         
-        if (firstId) {
-          await uploadPhoto(firstId, formData.photo, token);
-        }
+        // Загружаем фото на каждый предмет
+        const uploadPromises = items.map(async (item) => {
+          if (item?.id) {
+            // Создаём копию файла для каждого запроса
+            const fileCopy = new File([formData.photo], formData.photo.name, {
+              type: formData.photo.type,
+            });
+            return uploadPhoto(item.id, fileCopy, token);
+          }
+          return null;
+        });
+        
+        await Promise.all(uploadPromises);
       }
 
       setSuccess(true);
