@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AuthContext } from "../context/AuthContext";
 
 function MainLayout() {
   const location = useLocation();
