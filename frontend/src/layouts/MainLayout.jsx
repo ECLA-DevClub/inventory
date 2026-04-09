@@ -1,7 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AuthContext } from "../context/AuthContext";
 
 function MainLayout() {
   const location = useLocation();
@@ -60,6 +59,8 @@ function MainLayout() {
     },
     { to: "/scan", label: t("Scan Mode"), shortLabel: "S", show: true },
     { to: "/audit", label: t("Inventory Audit"), shortLabel: "I", show: true },
+    // 👇 ДОБАВЛЕН ПУНКТ "Печать"
+    { to: "/print", label: "🖨 Печать", shortLabel: "P", show: true },
   ];
 
   const adminNavItems = [
