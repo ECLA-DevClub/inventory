@@ -208,7 +208,7 @@ function FurnitureCreate() {
     clearFieldError(name);
 
     if (name === "building_id") {
-      setFormData((prev) => ({ ...prev, building_id: Number(value), room_id: "" }));
+      setFormData((prev) => ({ ...prev, building_id: value ? Number(value) : "", room_id: "" }));
       return;
     }
 
@@ -272,7 +272,10 @@ function FurnitureCreate() {
   const validateForm = () => {
     const errors = {};
 
-    if (!formData.name.trim()) errors.name = "Введите название";
+    if (!formData.name || !formData.name.trim()) {
+      errors.name = "Введите название";
+    }
+    
     if (!formData.type_id) errors.type_id = "Выберите тип";
     if (!formData.building_id) errors.building_id = "Выберите этаж";
     if (!formData.room_id) errors.room_id = "Выберите комнату";
@@ -352,6 +355,12 @@ function FurnitureCreate() {
       return;
     }
 
+    // 🔧 ДОБАВЛЕНА ЗАЩИТА ОТ ПУСТЫХ ПОЛЕЙ
+    if (!formData.type_id || !formData.building_id || !formData.room_id) {
+      setError("Выберите все обязательные поля (тип, этаж, комната)");
+      return;
+    }
+
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
@@ -364,63 +373,61 @@ function FurnitureCreate() {
       setError("");
       setFieldErrors({});
 
-      const response = await createFurniture(
-        {
-          name: formData.name.trim(),
-          type_id: Number(formData.type_id),
-          building_id: Number(formData.building_id),
-          room_id: Number(formData.room_id),
-          condition_id:
-            formData.condition_id === "" ? null : Number(formData.condition_id),
-          model: formData.model.trim() || null,
-          manufacturer: formData.manufacturer.trim() || null,
-          purchase_date: formData.purchase_date || null,
-          price_kgs:
-            formData.price_kgs === "" ? null : Number(formData.price_kgs),
-          responsible_person: formData.responsible_person.trim() || null,
-          last_condition_check_date: formData.last_condition_check_date || null,
-          next_condition_check_date: formData.next_condition_check_date || null,
-          condition_check_interval_days:
-            formData.condition_check_interval_days === ""
-              ? null
-              : Number(formData.condition_check_interval_days),
-          quantity: formData.quantity,
-        },
-        token
-      );
+      // 🔧 ИСПРАВЛЕННЫЙ submitData с защитой от null
+      const submitData = {
+        name: String(formData.name || "").trim(),
+        type_id: formData.type_id ? Number(formData.type_id) : null,
+        building_id: formData.building_id ? Number(formData.building_id) : null,
+        room_id: formData.room_id ? Number(formData.room_id) : null,
+        condition_id: formData.condition_id ? Number(formData.condition_id) : null,
+        model: formData.model ? String(formData.model).trim() : null,
+        manufacturer: formData.manufacturer ? String(formData.manufacturer).trim() : null,
+        purchase_date: formData.purchase_date || null,
+        price_kgs: formData.price_kgs ? Number(formData.price_kgs) : null,
+        responsible_person: formData.responsible_person ? String(formData.responsible_person).trim() : null,
+        last_condition_check_date: formData.last_condition_check_date || null,
+        next_condition_check_date: formData.next_condition_check_date || null,
+        condition_check_interval_days: formData.condition_check_interval_days ? Number(formData.condition_check_interval_days) : null,
+        quantity: Number(formData.quantity) || 1,
+      };
 
-      // 🔧 ИСПРАВЛЕННАЯ ЛОГИКА ЗАГРУЗКИ ФОТО
+      console.log("📤 SUBMIT DATA:", {
+        name: submitData.name,
+        type_id: submitData.type_id,
+        building_id: submitData.building_id,
+        room_id: submitData.room_id,
+        quantity: submitData.quantity,
+        hasPhoto: !!formData.photo,
+      });
+
+      const response = await createFurniture(submitData, token);
+
+      console.log("📥 RESPONSE:", response);
+
+      // Загружаем фото если есть
       if (formData.photo) {
-        console.log("CREATE RESPONSE:", response);
-        
         let firstId = null;
         
-        // Если ответ - массив (quantity > 1)
         if (Array.isArray(response) && response.length > 0) {
           firstId = response[0].id;
-        }
-        // Если ответ - объект с полем items
-        else if (response?.items && Array.isArray(response.items) && response.items.length > 0) {
+        } else if (response?.items && Array.isArray(response.items) && response.items.length > 0) {
           firstId = response.items[0].id;
-        }
-        // Если ответ - объект с полем id (quantity === 1)
-        else if (response?.id) {
+        } else if (response?.id) {
           firstId = response.id;
         }
         
-        if (!firstId) {
-          console.error("Не удалось найти ID в ответе:", response);
-          throw new Error("ID не найден после создания");
+        if (firstId) {
+          console.log("📸 Uploading photo for ID:", firstId);
+          await uploadPhoto(firstId, formData.photo, token);
+        } else {
+          console.warn("⚠️ Could not find ID in response:", response);
         }
-        
-        console.log("Загружаем фото для ID:", firstId);
-        await uploadPhoto(firstId, formData.photo, token);
       }
 
       setSuccess(true);
       setTimeout(() => navigate("/furniture"), 1000);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Error:", err);
       const backendFieldError = mapBackendErrorToField(err.message);
       if (backendFieldError) setFieldErrors(backendFieldError);
       setError(err.message || "Не удалось сохранить мебель");
@@ -568,7 +575,7 @@ function FurnitureCreate() {
               type="text"
               name="name"
               placeholder="Например: Стол преподавателя"
-              value={formData.name}
+              value={formData.name || ""}
               onChange={handleChange}
               className={getFieldClass("name")}
             />
@@ -601,7 +608,7 @@ function FurnitureCreate() {
               type="text"
               name="model"
               placeholder="Например: Office Pro 120"
-              value={formData.model}
+              value={formData.model || ""}
               onChange={handleChange}
               className={getFieldClass("model")}
             />
@@ -615,7 +622,7 @@ function FurnitureCreate() {
               type="text"
               name="manufacturer"
               placeholder="Например: IKEA"
-              value={formData.manufacturer}
+              value={formData.manufacturer || ""}
               onChange={handleChange}
               className={getFieldClass("manufacturer")}
             />
@@ -628,7 +635,7 @@ function FurnitureCreate() {
             <input
               type="date"
               name="purchase_date"
-              value={formData.purchase_date}
+              value={formData.purchase_date || ""}
               onChange={handleChange}
               className={getFieldClass("purchase_date")}
             />
@@ -642,7 +649,7 @@ function FurnitureCreate() {
               type="text"
               name="price_kgs"
               placeholder="Например: 4500"
-              value={formData.price_kgs}
+              value={formData.price_kgs || ""}
               onChange={handleChange}
               className={getFieldClass("price_kgs")}
             />
@@ -694,7 +701,7 @@ function FurnitureCreate() {
               type="text"
               name="responsible_person"
               placeholder="Например: Рабочий стол 1 / Иванов А.А."
-              value={formData.responsible_person}
+              value={formData.responsible_person || ""}
               onChange={handleChange}
               className={getFieldClass("responsible_person")}
             />
@@ -745,7 +752,7 @@ function FurnitureCreate() {
                   <input
                     type="date"
                     name="last_condition_check_date"
-                    value={formData.last_condition_check_date}
+                    value={formData.last_condition_check_date || ""}
                     onChange={handleChange}
                     className={getFieldClass("last_condition_check_date")}
                   />
@@ -758,7 +765,7 @@ function FurnitureCreate() {
                     type="text"
                     name="condition_check_interval_days"
                     placeholder="Например: 180"
-                    value={formData.condition_check_interval_days}
+                    value={formData.condition_check_interval_days || ""}
                     onChange={handleChange}
                     className={getFieldClass("condition_check_interval_days")}
                   />
@@ -770,7 +777,7 @@ function FurnitureCreate() {
                   <input
                     type="date"
                     name="next_condition_check_date"
-                    value={formData.next_condition_check_date}
+                    value={formData.next_condition_check_date || ""}
                     onChange={handleChange}
                     className={getFieldClass("next_condition_check_date")}
                   />
