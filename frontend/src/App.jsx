@@ -13,6 +13,7 @@ import ScanPage from "./pages/ScanPage";
 import AuditSession from "./pages/AuditSession";
 import AddUser from "./pages/AddUser";
 import { AuthContext } from "./context/AuthContext";
+import PrintPage from "./pages/PrintPage";
 
 function RoleRoute({ allow, children }) {
   const { role } = useContext(AuthContext);
@@ -57,6 +58,7 @@ function App() {
         <Route path="/furniture/:id/label" element={<FurnitureLabel />} />
         <Route path="/scan" element={<ScanPage />} />
         <Route path="/audit" element={<AuditSession />} />
+        <Route path="/print" element={<PrintPage />} />
 
         <Route
           path="/furniture/create"
