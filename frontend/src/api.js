@@ -56,7 +56,6 @@ function buildAuthHeaders(token, extraHeaders = {}) {
 export function resolveAssetUrl(path) {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  // Убираем лишний слэш
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_URL}${cleanPath}`;
 }
@@ -137,15 +136,34 @@ export async function getFurnitureById(id, token = "") {
 }
 
 export async function createFurniture(data, token) {
+  // 🔧 ПРАВИЛЬНО: FormData вместо JSON
+  const formData = new FormData();
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      // Для чисел и строк
+      if (typeof value === 'number' || typeof value === 'string') {
+        formData.append(key, String(value));
+      }
+      // Для файлов
+      else if (value instanceof File) {
+        formData.append(key, value);
+      }
+    }
+  });
+
   const res = await fetch(`${API_URL}/furniture/`, {
     method: "POST",
-    headers: buildAuthHeaders(token, {
-      "Content-Type": "application/json",
-    }),
-    body: JSON.stringify(data),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // ❗ НЕ СТАВИМ Content-Type - браузер сам добавит boundary
+    },
+    body: formData,
   });
 
   if (!res.ok) {
+    const errorText = await res.text();
+    console.error("API Error:", errorText);
     await parseError(res, "Ошибка создания");
   }
 
@@ -192,7 +210,6 @@ export async function deleteFurniture(id, token) {
 
 export async function uploadPhoto(id, file, token) {
   const formData = new FormData();
-  // 🔧 ИСПРАВЛЕНО: "photo" вместо "file"
   formData.append("photo", file);
 
   const res = await fetch(`${API_URL}/furniture/${id}/photo`, {
