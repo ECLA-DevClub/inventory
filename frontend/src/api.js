@@ -138,16 +138,14 @@ export async function getFurnitureById(id, token = "") {
 export async function createFurniture(data, token) {
   const formData = new FormData();
 
-  // 🔧 УБИРАЕМ ФИЛЬТР ПУСТЫХ ЗНАЧЕНИЙ
   Object.entries(data).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
-      // Для всех значений (включая пустые строки) - отправляем
-      if (typeof value === 'number' || typeof value === 'string') {
-        formData.append(`item.${key}`, String(value));
-      }
-      // Для файлов
-      else if (value instanceof File) {
-        formData.append(`item.${key}`, value);
+      if (value instanceof File) {
+        // Для файлов - отправляем как есть
+        formData.append(key, value);
+      } else {
+        // Для всех остальных - преобразуем в строку
+        formData.append(key, String(value));
       }
     }
   });
