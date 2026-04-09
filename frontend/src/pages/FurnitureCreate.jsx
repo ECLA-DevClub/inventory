@@ -418,7 +418,11 @@ function FurnitureCreate() {
         
         if (firstId) {
           console.log("📸 Uploading photo for ID:", firstId);
-          await uploadPhoto(firstId, formData.photo, token);
+          if (formData.photo && Array.isArray(response)) {
+             for (const item of response) {
+              await uploadPhoto(item.id, formData.photo, token);
+            }
+         }
         } else {
           console.warn("⚠️ Could not find ID in response:", response);
         }
