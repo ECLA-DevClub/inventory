@@ -389,12 +389,32 @@ function FurnitureCreate() {
         token
       );
 
-      // Фото загружаем только на первый созданный item
+      // 🔧 ИСПРАВЛЕННАЯ ЛОГИКА ЗАГРУЗКИ ФОТО
       if (formData.photo) {
-        const firstId = response.items?.[0]?.id ?? response.id;
-        if (firstId) {
-          await uploadPhoto(firstId, formData.photo, token);
+        console.log("CREATE RESPONSE:", response);
+        
+        let firstId = null;
+        
+        // Если ответ - массив (quantity > 1)
+        if (Array.isArray(response) && response.length > 0) {
+          firstId = response[0].id;
         }
+        // Если ответ - объект с полем items
+        else if (response?.items && Array.isArray(response.items) && response.items.length > 0) {
+          firstId = response.items[0].id;
+        }
+        // Если ответ - объект с полем id (quantity === 1)
+        else if (response?.id) {
+          firstId = response.id;
+        }
+        
+        if (!firstId) {
+          console.error("Не удалось найти ID в ответе:", response);
+          throw new Error("ID не найден после создания");
+        }
+        
+        console.log("Загружаем фото для ID:", firstId);
+        await uploadPhoto(firstId, formData.photo, token);
       }
 
       setSuccess(true);

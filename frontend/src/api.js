@@ -56,7 +56,9 @@ function buildAuthHeaders(token, extraHeaders = {}) {
 export function resolveAssetUrl(path) {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${API_URL}${path}`;
+  // Убираем лишний слэш
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_URL}${cleanPath}`;
 }
 
 /* ---------------- AUTH ---------------- */
@@ -190,7 +192,8 @@ export async function deleteFurniture(id, token) {
 
 export async function uploadPhoto(id, file, token) {
   const formData = new FormData();
-  formData.append("file", file);
+  // 🔧 ИСПРАВЛЕНО: "photo" вместо "file"
+  formData.append("photo", file);
 
   const res = await fetch(`${API_URL}/furniture/${id}/photo`, {
     method: "POST",
