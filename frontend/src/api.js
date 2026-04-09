@@ -136,12 +136,12 @@ export async function getFurnitureById(id, token = "") {
 }
 
 export async function createFurniture(data, token) {
-  // 🔧 ПРАВИЛЬНО: FormData с префиксом "item."
   const formData = new FormData();
 
+  // 🔧 УБИРАЕМ ФИЛЬТР ПУСТЫХ ЗНАЧЕНИЙ
   Object.entries(data).forEach(([key, value]) => {
-    if (value !== null && value !== undefined && value !== '') {
-      // Для чисел и строк - добавляем префикс "item."
+    if (value !== undefined && value !== null) {
+      // Для всех значений (включая пустые строки) - отправляем
       if (typeof value === 'number' || typeof value === 'string') {
         formData.append(`item.${key}`, String(value));
       }
@@ -156,7 +156,6 @@ export async function createFurniture(data, token) {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      // ❗ НЕ СТАВИМ Content-Type - браузер сам добавит boundary
     },
     body: formData,
   });
