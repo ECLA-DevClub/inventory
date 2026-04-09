@@ -353,12 +353,25 @@ def get_furniture_by_id(furniture_id: int, db: Session = Depends(get_db)):
 
 
 # =========================
-# CREATE (С ИСПОЛЬЗОВАНИЕМ СХЕМЫ)
+# CREATE (С ИСПОЛЬЗОВАНИЕМ FORM ПАРАМЕТРОВ)
 # =========================
 
 @router.post("/", response_model=List[schemas.FurnitureResponse])
 async def create_furniture(
-    item: schemas.FurnitureCreate,
+    name: str = Form(...),
+    type_id: int = Form(...),
+    building_id: int = Form(...),
+    room_id: int = Form(...),
+    quantity: int = Form(1),
+    condition_id: Optional[int] = Form(None),
+    model: Optional[str] = Form(None),
+    manufacturer: Optional[str] = Form(None),
+    purchase_date: Optional[date] = Form(None),
+    price_kgs: Optional[int] = Form(None),
+    responsible_person: Optional[str] = Form(None),
+    last_condition_check_date: Optional[date] = Form(None),
+    next_condition_check_date: Optional[date] = Form(None),
+    condition_check_interval_days: Optional[int] = Form(None),
     photo: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
@@ -385,25 +398,25 @@ async def create_furniture(
     created_items = []
     
     # Цикл для создания quantity объектов
-    for i in range(item.quantity):
+    for i in range(quantity):
         inv_number = f"INV-{next_number + i:04d}"
         
         db_item = models.Furniture(
             inv_number=inv_number,
-            name=item.name,
-            type_id=item.type_id,
-            building_id=item.building_id,
-            room_id=item.room_id,
-            condition_id=item.condition_id,
-            model=item.model,
-            manufacturer=item.manufacturer,
-            purchase_date=item.purchase_date,
-            price_kgs=item.price_kgs,
-            responsible_person=item.responsible_person,
+            name=name,
+            type_id=type_id,
+            building_id=building_id,
+            room_id=room_id,
+            condition_id=condition_id,
+            model=model,
+            manufacturer=manufacturer,
+            purchase_date=purchase_date,
+            price_kgs=price_kgs,
+            responsible_person=responsible_person,
             photo_url=photo_url,
-            last_condition_check_date=item.last_condition_check_date,
-            next_condition_check_date=item.next_condition_check_date,
-            condition_check_interval_days=item.condition_check_interval_days,
+            last_condition_check_date=last_condition_check_date,
+            next_condition_check_date=next_condition_check_date,
+            condition_check_interval_days=condition_check_interval_days,
         )
         
         db.add(db_item)
