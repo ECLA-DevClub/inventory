@@ -35,6 +35,7 @@ function FurnitureCreate() {
     next_condition_check_date: "",
     condition_check_interval_days: "",
     responsible_person: "",
+    quantity: 1,
     photo: null,
   });
 
@@ -163,14 +164,10 @@ function FurnitureCreate() {
     }
 
     const interval = Number(formData.condition_check_interval_days);
-    if (!Number.isFinite(interval) || interval <= 0) {
-      return;
-    }
+    if (!Number.isFinite(interval) || interval <= 0) return;
 
     const baseDate = new Date(formData.last_condition_check_date);
-    if (Number.isNaN(baseDate.getTime())) {
-      return;
-    }
+    if (Number.isNaN(baseDate.getTime())) return;
 
     const nextDate = new Date(baseDate);
     nextDate.setDate(nextDate.getDate() + interval);
@@ -192,9 +189,7 @@ function FurnitureCreate() {
 
   useEffect(() => {
     return () => {
-      if (preview) {
-        URL.revokeObjectURL(preview);
-      }
+      if (preview) URL.revokeObjectURL(preview);
     };
   }, [preview]);
 
@@ -209,24 +204,16 @@ function FurnitureCreate() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setError("");
     clearFieldError(name);
 
     if (name === "building_id") {
-      setFormData((prev) => ({
-        ...prev,
-        building_id: Number(value),
-        room_id: "",
-      }));
+      setFormData((prev) => ({ ...prev, building_id: Number(value), room_id: "" }));
       return;
     }
 
     if (name === "price_kgs") {
-      setFormData((prev) => ({
-        ...prev,
-        price_kgs: value.replace(/[^\d]/g, ""),
-      }));
+      setFormData((prev) => ({ ...prev, price_kgs: value.replace(/[^\d]/g, "") }));
       return;
     }
 
@@ -234,6 +221,15 @@ function FurnitureCreate() {
       setFormData((prev) => ({
         ...prev,
         condition_check_interval_days: value.replace(/[^\d]/g, ""),
+      }));
+      return;
+    }
+
+    if (name === "quantity") {
+      const qty = parseInt(value, 10);
+      setFormData((prev) => ({
+        ...prev,
+        quantity: isNaN(qty) || qty < 1 ? 1 : qty > 500 ? 500 : qty,
       }));
       return;
     }
@@ -267,9 +263,7 @@ function FurnitureCreate() {
       return;
     }
 
-    if (preview) {
-      URL.revokeObjectURL(preview);
-    }
+    if (preview) URL.revokeObjectURL(preview);
 
     setFormData((prev) => ({ ...prev, photo: file }));
     setPreview(URL.createObjectURL(file));
@@ -278,21 +272,10 @@ function FurnitureCreate() {
   const validateForm = () => {
     const errors = {};
 
-    if (!formData.name.trim()) {
-      errors.name = "Введите название";
-    }
-
-    if (!formData.type_id) {
-      errors.type_id = "Выберите тип";
-    }
-
-    if (!formData.building_id) {
-      errors.building_id = "Выберите этаж";
-    }
-
-    if (!formData.room_id) {
-      errors.room_id = "Выберите комнату";
-    }
+    if (!formData.name.trim()) errors.name = "Введите название";
+    if (!formData.type_id) errors.type_id = "Выберите тип";
+    if (!formData.building_id) errors.building_id = "Выберите этаж";
+    if (!formData.room_id) errors.room_id = "Выберите комнату";
 
     if (
       formData.purchase_date &&
@@ -338,65 +321,26 @@ function FurnitureCreate() {
 
   const mapBackendErrorToField = (message) => {
     const lower = String(message || "").toLowerCase();
-
-    if (lower.includes("name")) {
-      return { name: "Проверьте поле Название" };
-    }
-
-    if (lower.includes("type_id")) {
-      return { type_id: "Проверьте поле Тип" };
-    }
-
-    if (lower.includes("building_id")) {
-      return { building_id: "Проверьте поле Этаж" };
-    }
-
-    if (lower.includes("room_id")) {
-      return { room_id: "Проверьте поле Комната" };
-    }
-
-    if (lower.includes("condition_id")) {
-      return { condition_id: "Проверьте поле Состояние" };
-    }
-
-    if (lower.includes("purchase_date") || lower.includes("date")) {
+    if (lower.includes("name")) return { name: "Проверьте поле Название" };
+    if (lower.includes("type_id")) return { type_id: "Проверьте поле Тип" };
+    if (lower.includes("building_id")) return { building_id: "Проверьте поле Этаж" };
+    if (lower.includes("room_id")) return { room_id: "Проверьте поле Комната" };
+    if (lower.includes("condition_id")) return { condition_id: "Проверьте поле Состояние" };
+    if (lower.includes("purchase_date") || lower.includes("date"))
       return { purchase_date: "Проверьте дату. Нужен формат YYYY-MM-DD" };
-    }
-
-    if (lower.includes("price_kgs") || lower.includes("price")) {
+    if (lower.includes("price_kgs") || lower.includes("price"))
       return { price_kgs: "Проверьте поле Цена" };
-    }
-
-    if (lower.includes("manufacturer")) {
+    if (lower.includes("manufacturer"))
       return { manufacturer: "Проверьте поле Производитель" };
-    }
-
-    if (lower.includes("model")) {
-      return { model: "Проверьте поле Модель" };
-    }
-
-    if (lower.includes("responsible")) {
+    if (lower.includes("model")) return { model: "Проверьте поле Модель" };
+    if (lower.includes("responsible"))
       return { responsible_person: "Проверьте поле Ответственный" };
-    }
-
-    if (lower.includes("last_condition_check_date")) {
-      return {
-        last_condition_check_date: "Проверьте дату последней проверки",
-      };
-    }
-
-    if (lower.includes("next_condition_check_date")) {
-      return {
-        next_condition_check_date: "Проверьте дату следующей проверки",
-      };
-    }
-
-    if (lower.includes("condition_check_interval_days")) {
-      return {
-        condition_check_interval_days: "Проверьте интервал проверки",
-      };
-    }
-
+    if (lower.includes("last_condition_check_date"))
+      return { last_condition_check_date: "Проверьте дату последней проверки" };
+    if (lower.includes("next_condition_check_date"))
+      return { next_condition_check_date: "Проверьте дату следующей проверки" };
+    if (lower.includes("condition_check_interval_days"))
+      return { condition_check_interval_days: "Проверьте интервал проверки" };
     return null;
   };
 
@@ -409,7 +353,6 @@ function FurnitureCreate() {
     }
 
     const validationErrors = validateForm();
-
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
       setError("Пожалуйста, исправьте ошибки в форме");
@@ -421,7 +364,7 @@ function FurnitureCreate() {
       setError("");
       setFieldErrors({});
 
-      const createdItem = await createFurniture(
+      const response = await createFurniture(
         {
           name: formData.name.trim(),
           type_id: Number(formData.type_id),
@@ -435,35 +378,31 @@ function FurnitureCreate() {
           price_kgs:
             formData.price_kgs === "" ? null : Number(formData.price_kgs),
           responsible_person: formData.responsible_person.trim() || null,
-          last_condition_check_date:
-            formData.last_condition_check_date || null,
-          next_condition_check_date:
-            formData.next_condition_check_date || null,
+          last_condition_check_date: formData.last_condition_check_date || null,
+          next_condition_check_date: formData.next_condition_check_date || null,
           condition_check_interval_days:
             formData.condition_check_interval_days === ""
               ? null
               : Number(formData.condition_check_interval_days),
+          quantity: formData.quantity,
         },
         token
       );
 
+      // Фото загружаем только на первый созданный item
       if (formData.photo) {
-        await uploadPhoto(createdItem.id, formData.photo, token);
+        const firstId = response.items?.[0]?.id ?? response.id;
+        if (firstId) {
+          await uploadPhoto(firstId, formData.photo, token);
+        }
       }
 
       setSuccess(true);
-
-      setTimeout(() => {
-        navigate("/furniture");
-      }, 1000);
+      setTimeout(() => navigate("/furniture"), 1000);
     } catch (err) {
       console.error(err);
-
       const backendFieldError = mapBackendErrorToField(err.message);
-      if (backendFieldError) {
-        setFieldErrors(backendFieldError);
-      }
-
+      if (backendFieldError) setFieldErrors(backendFieldError);
       setError(err.message || "Не удалось сохранить мебель");
     } finally {
       setLoading(false);
@@ -525,6 +464,7 @@ function FurnitureCreate() {
           onSubmit={handleSubmit}
           className="relative z-10 grid grid-cols-1 gap-6 md:grid-cols-2"
         >
+          {/* ── ФОТО ── */}
           <div className="md:col-span-2">
             <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -536,8 +476,9 @@ function FurnitureCreate() {
                     На телефоне можно сразу открыть камеру и сфотографировать предмет
                   </p>
                 </div>
-
-                {formData.photo && <span className="liquid-badge">1 file selected</span>}
+                {formData.photo && (
+                  <span className="liquid-badge">1 file selected</span>
+                )}
               </div>
 
               <input
@@ -567,10 +508,42 @@ function FurnitureCreate() {
             </div>
           </div>
 
+          {/* ── КОЛИЧЕСТВО (BULK) ── */}
+          <div className="md:col-span-2">
+            <div className="rounded-[1.75rem] border border-blue-400/20 bg-blue-500/[0.06] p-5 backdrop-blur-xl">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="text-xl">📦</span>
+                <div>
+                  <div className="text-sm font-medium text-white/90">
+                    Количество (Bulk создание)
+                  </div>
+                  <div className="text-xs text-white/50">
+                    Введите количество — будет создано столько записей с одинаковыми данными
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <input
+                  type="number"
+                  name="quantity"
+                  min="1"
+                  max="500"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  className="w-40 rounded-[20px] border border-blue-400/30 bg-white/[0.08] px-5 py-3 text-center text-xl font-bold text-white outline-none transition focus:border-blue-400/50 focus:bg-white/12 focus:ring-2 focus:ring-blue-400/20"
+                />
+                <div className="text-sm text-white/60">
+                  {formData.quantity === 1
+                    ? "Будет создана 1 запись"
+                    : `Будет создано ${formData.quantity} записей`}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── НАЗВАНИЕ ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Название
-            </label>
+            <label className="block text-sm font-medium text-white/70">Название</label>
             <input
               type="text"
               name="name"
@@ -582,19 +555,16 @@ function FurnitureCreate() {
             {renderFieldError("name")}
           </div>
 
+          {/* ── ТИП ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Тип
-            </label>
+            <label className="block text-sm font-medium text-white/70">Тип</label>
             <select
               name="type_id"
               value={formData.type_id}
               onChange={handleChange}
               className={getFieldClass("type_id")}
             >
-              <option value="" className="bg-slate-900">
-                Выберите тип
-              </option>
+              <option value="" className="bg-slate-900">Выберите тип</option>
               {typesList.map((type) => (
                 <option key={type.id} value={type.id} className="bg-slate-900">
                   {type.name}
@@ -604,10 +574,9 @@ function FurnitureCreate() {
             {renderFieldError("type_id")}
           </div>
 
+          {/* ── МОДЕЛЬ ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Модель
-            </label>
+            <label className="block text-sm font-medium text-white/70">Модель</label>
             <input
               type="text"
               name="model"
@@ -619,10 +588,9 @@ function FurnitureCreate() {
             {renderFieldError("model")}
           </div>
 
+          {/* ── ПРОИЗВОДИТЕЛЬ ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Производитель
-            </label>
+            <label className="block text-sm font-medium text-white/70">Производитель</label>
             <input
               type="text"
               name="manufacturer"
@@ -634,10 +602,9 @@ function FurnitureCreate() {
             {renderFieldError("manufacturer")}
           </div>
 
+          {/* ── ДАТА ПРИОБРЕТЕНИЯ ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Дата приобретения
-            </label>
+            <label className="block text-sm font-medium text-white/70">Дата приобретения</label>
             <input
               type="date"
               name="purchase_date"
@@ -648,10 +615,9 @@ function FurnitureCreate() {
             {renderFieldError("purchase_date")}
           </div>
 
+          {/* ── ЦЕНА ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Цена (KGS)
-            </label>
+            <label className="block text-sm font-medium text-white/70">Цена (KGS)</label>
             <input
               type="text"
               name="price_kgs"
@@ -663,25 +629,18 @@ function FurnitureCreate() {
             {renderFieldError("price_kgs")}
           </div>
 
+          {/* ── ЭТАЖ ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Этаж
-            </label>
+            <label className="block text-sm font-medium text-white/70">Этаж</label>
             <select
               name="building_id"
               value={formData.building_id}
               onChange={handleChange}
               className={getFieldClass("building_id")}
             >
-              <option value="" className="bg-slate-900">
-                Выберите этаж
-              </option>
+              <option value="" className="bg-slate-900">Выберите этаж</option>
               {buildingsList.map((building) => (
-                <option
-                  key={building.id}
-                  value={building.id}
-                  className="bg-slate-900"
-                >
+                <option key={building.id} value={building.id} className="bg-slate-900">
                   {building.name}
                 </option>
               ))}
@@ -689,19 +648,16 @@ function FurnitureCreate() {
             {renderFieldError("building_id")}
           </div>
 
+          {/* ── КОМНАТА ── */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">
-              Комната
-            </label>
+            <label className="block text-sm font-medium text-white/70">Комната</label>
             <select
               name="room_id"
               value={formData.room_id}
               onChange={handleChange}
               className={getFieldClass("room_id")}
             >
-              <option value="" className="bg-slate-900">
-                Выберите комнату
-              </option>
+              <option value="" className="bg-slate-900">Выберите комнату</option>
               {filteredRooms.map((room) => (
                 <option key={room.id} value={room.id} className="bg-slate-900">
                   {room.name}
@@ -711,10 +667,9 @@ function FurnitureCreate() {
             {renderFieldError("room_id")}
           </div>
 
+          {/* ── ОТВЕТСТВЕННЫЙ ── */}
           <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-white/70">
-              Ответственный
-            </label>
+            <label className="block text-sm font-medium text-white/70">Ответственный</label>
             <input
               type="text"
               name="responsible_person"
@@ -726,19 +681,16 @@ function FurnitureCreate() {
             {renderFieldError("responsible_person")}
           </div>
 
+          {/* ── СОСТОЯНИЕ ── */}
           <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-white/70">
-              Состояние
-            </label>
+            <label className="block text-sm font-medium text-white/70">Состояние</label>
             <select
               name="condition_id"
               value={formData.condition_id}
               onChange={handleChange}
               className={getFieldClass("condition_id")}
             >
-              <option value="" className="bg-slate-900">
-                Без состояния
-              </option>
+              <option value="" className="bg-slate-900">Без состояния</option>
               {conditionsList.map((c) => (
                 <option key={c.id} value={c.id} className="bg-slate-900">
                   {c.name}
@@ -748,21 +700,17 @@ function FurnitureCreate() {
             {renderFieldError("condition_id")}
           </div>
 
+          {/* ── INSPECTION ── */}
           <div className="md:col-span-2">
             <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-sm font-medium text-white/75">
-                    Inspection Status
-                  </div>
+                  <div className="text-sm font-medium text-white/75">Inspection Status</div>
                   <div className="mt-1 text-xs text-white/45">
                     Настрой интервал проверки состояния, и система покажет статус.
                   </div>
                 </div>
-
-                <div
-                  className={`rounded-[1rem] border px-4 py-3 text-sm font-medium ${inspectionMeta.tone}`}
-                >
+                <div className={`rounded-[1rem] border px-4 py-3 text-sm font-medium ${inspectionMeta.tone}`}>
                   <div className="flex items-center gap-2">
                     <span>{inspectionMeta.icon}</span>
                     <span>{inspectionMeta.label}</span>
@@ -773,9 +721,7 @@ function FurnitureCreate() {
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-white/70">
-                    Last inspection
-                  </label>
+                  <label className="block text-sm font-medium text-white/70">Last inspection</label>
                   <input
                     type="date"
                     name="last_condition_check_date"
@@ -787,9 +733,7 @@ function FurnitureCreate() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-white/70">
-                    Check every (days)
-                  </label>
+                  <label className="block text-sm font-medium text-white/70">Check every (days)</label>
                   <input
                     type="text"
                     name="condition_check_interval_days"
@@ -802,9 +746,7 @@ function FurnitureCreate() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-white/70">
-                    Next inspection
-                  </label>
+                  <label className="block text-sm font-medium text-white/70">Next inspection</label>
                   <input
                     type="date"
                     name="next_condition_check_date"
@@ -818,13 +760,18 @@ function FurnitureCreate() {
             </div>
           </div>
 
+          {/* ── КНОПКИ ── */}
           <div className="md:col-span-2 flex flex-col gap-3 pt-2 sm:flex-row">
             <button
               type="submit"
               disabled={loading}
               className="apple-btn apple-btn-primary w-full rounded-[1.25rem] px-6 py-4 text-sm font-semibold tracking-wide disabled:opacity-60 sm:w-auto sm:min-w-[180px]"
             >
-              {loading ? "Сохранение..." : t("Save")}
+              {loading
+                ? "Сохранение..."
+                : formData.quantity > 1
+                ? `Создать ${formData.quantity} шт.`
+                : t("Save")}
             </button>
 
             <button

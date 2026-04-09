@@ -9,8 +9,7 @@ function MainLayout() {
   const { t, i18n } = useTranslation();
 
   const [open, setOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
+  
   const currentLang = i18n.language?.startsWith("ru") ? "ru" : "en";
   const canManageAssets = role === "admin" || role === "manager";
   const isAdmin = role === "admin";
@@ -40,8 +39,8 @@ function MainLayout() {
       ? "bg-white/15 text-white border border-white/15 shadow-[0_12px_32px_rgba(59,130,246,0.18)]"
       : "text-white/70 hover:text-white hover:bg-white/8 border border-transparent";
 
-  const navLinkClass = (path, collapsed = false) =>
-    `rounded-2xl ${collapsed ? "px-3 py-3 justify-center text-center" : "px-4 py-3"} flex items-center backdrop-blur-md transition-all duration-300 ${isActive(path)}`;
+  const navLinkClass = (path) =>
+    `rounded-2xl px-4 py-3 flex items-center backdrop-blur-md transition-all duration-300 ${isActive(path)}`;
 
   const langBtnClass = (lang) =>
     `flex-1 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300 ${
@@ -200,46 +199,18 @@ function MainLayout() {
           </>
         )}
 
-        <aside
-          className={`hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:justify-between lg:p-4 transition-all duration-300 ${
-            sidebarCollapsed
-              ? "lg:w-[104px] lg:min-w-[104px]"
-              : "lg:w-[280px] lg:min-w-[280px] xl:w-[320px] xl:min-w-[320px]"
-          }`}
-        >
+        <aside className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:justify-between lg:p-4 lg:w-[280px] xl:w-[320px]">
           <div className="glass-strong flex h-full flex-col justify-between rounded-[30px] border border-white/10 p-4 xl:p-6">
             <div>
               <div className="mb-6 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  {!sidebarCollapsed && (
-                    <>
-                      <div className="text-xs uppercase tracking-[0.25em] text-white/45">
-                        {t("Inventory System")}
-                      </div>
-                      <h1 className="mt-3 text-2xl font-semibold tracking-tight">
-                        {t("Inventory")}
-                      </h1>
-                    </>
-                  )}
-
-                  {sidebarCollapsed && (
-                    <div className="flex justify-center pt-1">
-                      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-white/5 text-lg font-bold text-white">
-                        I
-                      </div>
-                    </div>
-                  )}
+                  <div className="text-xs uppercase tracking-[0.25em] text-white/45">
+                    {t("Inventory System")}
+                  </div>
+                  <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+                    {t("Inventory")}
+                  </h1>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSidebarCollapsed((prev) => !prev)}
-                  className="apple-btn !px-3 !py-2 text-sm"
-                  aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                  title={sidebarCollapsed ? "Expand" : "Collapse"}
-                >
-                  {sidebarCollapsed ? "→" : "←"}
-                </button>
               </div>
 
               <nav className="flex flex-col gap-2 text-sm">
@@ -249,20 +220,17 @@ function MainLayout() {
                     <Link
                       key={item.to}
                       to={item.to}
-                      className={navLinkClass(item.to, sidebarCollapsed)}
-                      title={sidebarCollapsed ? item.label : ""}
+                      className={navLinkClass(item.to)}
                     >
-                      {sidebarCollapsed ? item.shortLabel : item.label}
+                      {item.label}
                     </Link>
                   ))}
 
                 {isAdmin && (
                   <>
-                    {!sidebarCollapsed && (
-                      <div className="mt-5 px-2 text-[11px] uppercase tracking-[0.22em] text-white/35">
-                        Management Panel
-                      </div>
-                    )}
+                    <div className="mt-5 px-2 text-[11px] uppercase tracking-[0.22em] text-white/35">
+                      Management Panel
+                    </div>
 
                     {adminNavItems
                       .filter((item) => item.show)
@@ -270,10 +238,9 @@ function MainLayout() {
                         <Link
                           key={item.to}
                           to={item.to}
-                          className={navLinkClass(item.to, sidebarCollapsed)}
-                          title={sidebarCollapsed ? item.label : ""}
+                          className={navLinkClass(item.to)}
                         >
-                          {sidebarCollapsed ? item.shortLabel : item.label}
+                          {item.label}
                         </Link>
                       ))}
                   </>
@@ -282,52 +249,29 @@ function MainLayout() {
             </div>
 
             <div className="border-t border-white/10 pt-6">
-              {!sidebarCollapsed && (
-                <>
-                  <div className="mb-3 text-xs uppercase tracking-[0.2em] text-white/45">
-                    {t("Language")}
-                  </div>
+              <div className="mb-3 text-xs uppercase tracking-[0.2em] text-white/45">
+                {t("Language")}
+              </div>
 
-                  <div className="mb-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => changeLanguage("en")}
-                      className={langBtnClass("en")}
-                    >
-                      EN
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => changeLanguage("ru")}
-                      className={langBtnClass("ru")}
-                    >
-                      RU
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {sidebarCollapsed && (
-                <div className="mb-4 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => changeLanguage("en")}
-                    className="apple-btn w-full text-center !px-2 !py-2 text-xs"
-                  >
-                    EN
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => changeLanguage("ru")}
-                    className="apple-btn w-full text-center !px-2 !py-2 text-xs"
-                  >
-                    RU
-                  </button>
-                </div>
-              )}
+              <div className="mb-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => changeLanguage("en")}
+                  className={langBtnClass("en")}
+                >
+                  EN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeLanguage("ru")}
+                  className={langBtnClass("ru")}
+                >
+                  RU
+                </button>
+              </div>
 
               <button onClick={logout} className="apple-btn w-full text-center">
-                {sidebarCollapsed ? "⎋" : t("Logout")}
+                {t("Logout")}
               </button>
             </div>
           </div>
