@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -388,16 +389,13 @@ function FurnitureList() {
         <table className="w-full text-sm">
           <thead className="border-b border-white/10">
             <tr className="text-white/70">
-              {/* Photo — fixed narrow column */}
               <th className="w-[72px] px-4 py-4 text-left font-medium xl:w-[88px]"></th>
-              {/* Inv # — fixed width, no wrap */}
               <th className="w-[130px] px-4 py-4 text-left font-medium xl:w-[150px]">Inv #</th>
               <th className="px-4 py-4 text-left font-medium">{t("Name")}</th>
               <th className="px-4 py-4 text-left font-medium">{t("Type")}</th>
               <th className="px-4 py-4 text-left font-medium">Price</th>
               <th className="px-4 py-4 text-left font-medium">{t("Location")}</th>
               <th className="px-4 py-4 text-left font-medium">{t("Status")}</th>
-              {/* Inspection — enough width so badge never clips */}
               <th className="w-[140px] px-4 py-4 text-left font-medium">Inspection</th>
               {canManageAssets && (
                 <th className="px-4 py-4 text-left font-medium">{t("Actions")}</th>
@@ -412,7 +410,6 @@ function FurnitureList() {
                 onClick={() => handleOpenDetail(f.id)}
                 className="cursor-pointer border-b border-white/5 transition hover:bg-white/10"
               >
-                {/* Photo cell */}
                 <td
                   className="px-4 py-3"
                   onClick={(e) => e.stopPropagation()}
@@ -455,7 +452,6 @@ function FurnitureList() {
                   )}
                 </td>
 
-                {/* Inv # cell — nowrap so full number shows */}
                 <td className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-blue-300">
                   {f.invNumber}
                 </td>
@@ -473,7 +469,6 @@ function FurnitureList() {
                     {f.status}
                   </span>
                 </td>
-                {/* Inspection — nowrap so badge never clips */}
                 <td className="whitespace-nowrap px-4 py-3">
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${f.inspection.className}`}
@@ -643,10 +638,10 @@ function FurnitureList() {
         )}
       </div>
 
-      {/* ── PHOTO MODAL ── */}
-      {modalPhoto && (
+      {/* ── PHOTO MODAL (через Portal — всегда по центру экрана) ── */}
+      {modalPhoto && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3 sm:px-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-3 sm:px-4"
           onClick={() => setModalPhoto(null)}
         >
           <div
@@ -667,13 +662,14 @@ function FurnitureList() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ── DELETE MODAL ── */}
-      {deleteTarget && (
+      {/* ── DELETE MODAL (через Portal — всегда по центру экрана) ── */}
+      {deleteTarget && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4"
           onClick={() => {
             if (!deleteLoading) setDeleteTarget(null);
           }}
@@ -715,7 +711,8 @@ function FurnitureList() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
