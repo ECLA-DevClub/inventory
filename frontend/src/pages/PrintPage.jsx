@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { getBuildings, getRooms, getFurniture } from "../api";
 
 function PrintPage() {
-  const { token } = useAuth();
-  
   const [buildings, setBuildings] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [filteredRooms, setFilteredRooms] = useState([]);
@@ -21,8 +19,8 @@ function PrintPage() {
   const loadReferences = async () => {
     try {
       const [buildingsData, roomsData] = await Promise.all([
-        getBuildings(token),
-        getRooms(token),
+        getBuildings(),
+        getRooms(),
       ]);
       setBuildings(buildingsData || []);
       setRooms(roomsData || []);
@@ -61,7 +59,7 @@ function PrintPage() {
         room_id: Number(selectedRoom),
       };
       
-      const data = await getFurniture(filters, token);
+      const data = await getFurniture(filters);
       setFurnitureList(data || []);
       
       if (data.length === 0) {
@@ -232,12 +230,12 @@ function PrintPage() {
 
         /* Область печати A4 - формат наклейки 90x50mm */
         .print-area {
-            display: grid;
-            grid-template-columns: repeat(2, 90mm);
-            justify-content: center;
-            gap: 10mm;
-            padding: 20px;
-}
+          display: grid;
+          grid-template-columns: repeat(2, 90mm);
+          justify-content: center;
+          gap: 10mm;
+          padding: 20px;
+        }
 
         .card {
           width: 90mm;
