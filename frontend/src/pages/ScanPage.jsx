@@ -551,9 +551,21 @@ function ScanPage() {
                           </span>
                         </div>
 
+                        {/* ✅ ИСПРАВЛЕНО: проверка на URL и ссылка */}
                         <div className="break-all">
                           <span className="text-white/45">{t("Scan")}:</span>{" "}
-                          <span>{row.scannedValue}</span>
+                          {row.scannedValue?.startsWith("http") ? (
+                            <a
+                              href={row.scannedValue}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 underline"
+                            >
+                              {row.scannedValue}
+                            </a>
+                          ) : (
+                            <span>{row.scannedValue}</span>
+                          )}
                         </div>
                       </div>
                     </div>
