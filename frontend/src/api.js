@@ -141,10 +141,8 @@ export async function createFurniture(data, token) {
   Object.entries(data).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       if (value instanceof File) {
-        // Для файлов - отправляем как есть
         formData.append(key, value);
       } else {
-        // Для всех остальных - преобразуем в строку
         formData.append(key, String(value));
       }
     }
@@ -361,6 +359,28 @@ export async function updateUserRole(userId, role, token) {
   }
 
   return res.json();
+}
+
+export async function deleteUser(id, token) {
+  const res = await fetch(`${API_URL}/users/${id}`, {
+    method: "DELETE",
+    headers: buildAuthHeaders(token),
+  });
+
+  if (!res.ok) {
+    await parseError(res, "Ошибка удаления пользователя");
+  }
+
+  if (res.status === 204) {
+    return { success: true };
+  }
+
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+
+  return { success: true };
 }
 
 export { API_URL };
