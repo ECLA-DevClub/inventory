@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getBuildings, getRooms, getFurniture } from "../api";
 import { deleteUser } from "../api";
-import "./index.css";
+import "../index.css";
 
 function PrintPage() {
   const [buildings, setBuildings] = useState([]);
