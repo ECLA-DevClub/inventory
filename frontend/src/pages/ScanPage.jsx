@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom"; // ✅ ДОБАВЛЕН импорт
 import { Html5Qrcode } from "html5-qrcode";
 import { getFurnitureById } from "../api";
 
@@ -25,6 +26,7 @@ const SAME_QR_COOLDOWN_MS = 3000;
 
 function ScanPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate(); // ✅ ДОБАВЛЕН navigate
 
   const scannerRef = useRef(null);
   const scannerElementId = "inventory-qr-reader";
@@ -551,21 +553,22 @@ function ScanPage() {
                           </span>
                         </div>
 
-                        {/* ✅ ИСПРАВЛЕНО: проверка на URL и ссылка */}
+                        {/* ✅ ИСПРАВЛЕНО: кликабельная ссылка с навигацией */}
                         <div className="break-all">
                           <span className="text-white/45">{t("Scan")}:</span>{" "}
-                          {row.scannedValue?.startsWith("http") ? (
-                            <a
-                              href={row.scannedValue}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-400 underline"
-                            >
-                              {row.scannedValue}
-                            </a>
-                          ) : (
-                            <span>{row.scannedValue}</span>
-                          )}
+                          <span
+                            onClick={() =>
+                              navigate(
+                                row.scannedValue.replace(
+                                  "https://ecla-devclub.github.io/inventory",
+                                  ""
+                                )
+                              )
+                            }
+                            className="text-blue-400 underline cursor-pointer"
+                          >
+                            {row.scannedValue}
+                          </span>
                         </div>
                       </div>
                     </div>
