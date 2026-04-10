@@ -44,7 +44,7 @@ function PrintPage() {
     }
   }, [selectedBuilding, rooms]);
 
-  // ✅ Функция для генерации PDF с QR-кодами (правильная сетка)
+  // Функция для генерации PDF с QR-кодами (правильная сетка)
   const handleDownload = async () => {
     if (!selectedBuilding || !selectedRoom) {
       setError("Выберите этаж и комнату");
@@ -78,7 +78,7 @@ function PrintPage() {
         format: "a4",
       });
 
-      // ✅ ПРАВИЛЬНАЯ СЕТКА: 3 колонки, 6 строк = 18 этикеток на страницу
+      // Правильная сетка: 3 колонки, 6 строк = 18 этикеток на страницу
       const cols = 3;
       const rows = 6;
 
@@ -97,9 +97,8 @@ function PrintPage() {
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
 
-        // ✅ ИСПРАВЛЕНО: используем item.id, а не item.qr
+        // Используем item.id для QR-кода
         const qrData = String(item.id);
-        // ❌ УДАЛЕНА проверка if (!qrData) continue;
 
         const qrImage = await QRCode.toDataURL(qrData);
 
@@ -152,54 +151,77 @@ function PrintPage() {
   };
 
   return (
-    <div className="print-page">
-      {/* Панель управления - не печатается */}
-      <div className="no-print controls-panel">
-        <h2>Печать этикеток с QR-кодами</h2>
-        
-        {error && <div className="error-message">{error}</div>}
-        
-        <div className="form-group">
-          <label>Этаж:</label>
-          <select
-            value={selectedBuilding}
-            onChange={(e) => setSelectedBuilding(e.target.value)}
-          >
-            <option value="">Выберите этаж</option>
-            {buildings.map((building) => (
-              <option key={building.id} value={building.id}>
-                {building.name}
-              </option>
-            ))}
-          </select>
-        </div>
+    <div className="animate-fadeIn text-white">
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
+          
+          <div className="mb-6">
+            <div className="text-xs uppercase tracking-widest text-white/40">
+              PRINT WORKFLOW
+            </div>
+            <h2 className="mt-2 text-3xl font-bold">
+              Generate QR Labels
+            </h2>
+            <p className="mt-2 text-white/60">
+              Choose a building and room, then download QR labels for all assets.
+            </p>
+          </div>
 
-        <div className="form-group">
-          <label>Кабинет:</label>
-          <select
-            value={selectedRoom}
-            onChange={(e) => setSelectedRoom(e.target.value)}
-            disabled={!selectedBuilding}
-          >
-            <option value="">Выберите кабинет</option>
-            {filteredRooms.map((room) => (
-              <option key={room.id} value={room.id}>
-                {room.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-500/20 p-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
 
-        <div className="button-group">
-          <button onClick={handleDownload} disabled={loading}>
-            {loading ? "Загрузка..." : "Скачать PDF"}
-          </button>
-        </div>
-      </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm text-white/60">
+                Building
+              </label>
+              <select
+                value={selectedBuilding}
+                onChange={(e) => setSelectedBuilding(e.target.value)}
+                className="w-full rounded-xl bg-white/10 p-3 text-white outline-none backdrop-blur focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Choose floor</option>
+                {buildings.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      {/* Область печати больше не нужна, оставлена пустой */}
-      <div className="print-area">
-        {/* Здесь больше ничего не отображается, PDF генерируется напрямую */}
+            <div>
+              <label className="mb-2 block text-sm text-white/60">
+                Room
+              </label>
+              <select
+                value={selectedRoom}
+                onChange={(e) => setSelectedRoom(e.target.value)}
+                disabled={!selectedBuilding}
+                className="w-full rounded-xl bg-white/10 p-3 text-white outline-none backdrop-blur focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                <option value="">Choose room</option>
+                {filteredRooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={handleDownload}
+              disabled={loading}
+              className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-700 disabled:opacity-60"
+            >
+              {loading ? "Generating..." : "Download QR PDF"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
