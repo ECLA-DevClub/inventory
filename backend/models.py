@@ -70,6 +70,7 @@ class Furniture(Base):
     id = Column(Integer, primary_key=True, index=True)
     inv_number = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=False)
+    qr = Column(String, unique=True, index=True, nullable=True)
 
     model = Column(String, nullable=True)
     manufacturer = Column(String, nullable=True)
