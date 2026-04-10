@@ -181,11 +181,12 @@ function PrintPage() {
               <select
                 value={selectedBuilding}
                 onChange={(e) => setSelectedBuilding(e.target.value)}
-                className="w-full rounded-xl bg-white/10 p-3 text-white outline-none backdrop-blur focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-xl bg-white/10 p-3 outline-none backdrop-blur focus:ring-2 focus:ring-blue-500"
+                style={{ color: "white" }}
               >
-                <option value="">Choose floor</option>
+                <option value="" className="text-black">Choose floor</option>
                 {buildings.map((b) => (
-                  <option key={b.id} value={b.id}>
+                  <option key={b.id} value={b.id} className="text-black">
                     {b.name}
                   </option>
                 ))}
@@ -200,11 +201,12 @@ function PrintPage() {
                 value={selectedRoom}
                 onChange={(e) => setSelectedRoom(e.target.value)}
                 disabled={!selectedBuilding}
-                className="w-full rounded-xl bg-white/10 p-3 text-white outline-none backdrop-blur focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                className="w-full rounded-xl bg-white/10 p-3 outline-none backdrop-blur focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                style={{ color: "white" }}
               >
-                <option value="">Choose room</option>
+                <option value="" className="text-black">Choose room</option>
                 {filteredRooms.map((r) => (
-                  <option key={r.id} value={r.id}>
+                  <option key={r.id} value={r.id} className="text-black">
                     {r.name}
                   </option>
                 ))}
