@@ -1,6 +1,6 @@
 import { useMemo, useState, useContext, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { createUser, getUsers } from "../api";
+import { createUser, getUsers, deleteUser } from "../api";
 import { AuthContext } from "../context/AuthContext";
 
 const ROLE_OPTIONS = [
@@ -30,9 +30,20 @@ function AddUser() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState("");
   const [usersOpen, setUsersOpen] = useState(true);
+  const [openUserId, setOpenUserId] = useState(null);
 
   const trimmedFullName = useMemo(() => fullName.trim(), [fullName]);
   const trimmedEmail = useMemo(() => email.trim(), [email]);
+
+  // Получаем ID текущего пользователя из localStorage
+  const currentUserId = useMemo(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      return user?.id;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
@@ -51,6 +62,27 @@ function AddUser() {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  const handleDeleteUser = async (id) => {
+    // Проверка на удаление самого себя
+    if (id === currentUserId) {
+      setError("Нельзя удалить самого себя");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    if (!window.confirm("Удалить пользователя?")) return;
+
+    try {
+      await deleteUser(id, token);
+      await loadUsers();
+      setSuccess("Пользователь успешно удален");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError(err?.message || "Ошибка удаления пользователя");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -364,32 +396,84 @@ function AddUser() {
                   No users found.
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {users.map((userItem) => (
-                    <div
-                      key={userItem.id}
-                      className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4"
+                <div>
+                  {/* Кнопки управления раскрытием */}
+                  <div className="mb-3 flex gap-2">
+                    <button
+                      onClick={() => setOpenUserId("all")}
+                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="text-base font-semibold text-white break-words">
-                            {userItem.full_name || "No name"}
+                      Раскрыть всех
+                    </button>
+                    <span className="text-white/30">|</span>
+                    <button
+                      onClick={() => setOpenUserId(null)}
+                      className="text-xs text-white/50 hover:text-white/70 transition-colors"
+                    >
+                      Скрыть всех
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {users.map((userItem) => (
+                      <div
+                        key={userItem.id}
+                        className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4"
+                      >
+                        {/* HEADER */}
+                        <div
+                          onClick={() =>
+                            setOpenUserId(openUserId === userItem.id ? null : userItem.id)
+                          }
+                          className="flex cursor-pointer flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                        >
+                          <div>
+                            <div className="text-base font-semibold text-white">
+                              {userItem.full_name || "No name"}
+                            </div>
+                            <div className="text-sm text-white/60">{userItem.email}</div>
                           </div>
-                          <div className="mt-1 text-sm text-white/60 break-all">
-                            {userItem.email}
+
+                          <div className="flex items-center gap-3">
+                            <div className="text-xs bg-blue-500/20 px-2 py-1 rounded">
+                              {String(userItem.role).toUpperCase()}
+                            </div>
+
+                            <div>{(openUserId === userItem.id || openUserId === "all") ? "▾" : "▸"}</div>
                           </div>
                         </div>
 
-                        <div className="inline-flex w-fit rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
-                          {String(userItem.role || "").toUpperCase()}
-                        </div>
-                      </div>
+                        {/* DETAILS */}
+                        {(openUserId === userItem.id || openUserId === "all") && (
+                          <div className="mt-4 space-y-2 text-sm text-white/80">
+                            <div>User ID: {userItem.id}</div>
 
-                      <div className="mt-3 text-xs uppercase tracking-[0.18em] text-white/35">
-                        User ID: {userItem.id}
+                            {/* ⚠️ ПАРОЛЯ ТУТ НЕ БУДЕТ С БЕКА */}
+                            <div className="text-yellow-400">
+                              Пароль не хранится (безопасность)
+                            </div>
+
+                            {/* Кнопка удаления - не показываем для текущего пользователя */}
+                            {userItem.id !== currentUserId && (
+                              <button
+                                onClick={() => handleDeleteUser(userItem.id)}
+                                className="mt-2 rounded bg-red-500 px-3 py-1 text-sm hover:bg-red-600 transition-colors"
+                              >
+                                Удалить
+                              </button>
+                            )}
+                            
+                            {/* Сообщение для текущего пользователя */}
+                            {userItem.id === currentUserId && (
+                              <div className="mt-2 text-xs text-white/40 italic">
+                                Вы не можете удалить самого себя
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

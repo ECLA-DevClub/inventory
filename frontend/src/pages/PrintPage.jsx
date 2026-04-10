@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { getBuildings, getRooms, getFurniture } from "../api";
+import { deleteUser } from "../api";
+import "./index.css";
 
 function PrintPage() {
   const [buildings, setBuildings] = useState([]);
@@ -10,6 +12,18 @@ function PrintPage() {
   const [furnitureList, setFurnitureList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [openUserId, setOpenUserId] = useState(null);
+
+  const handleDeleteUser = async (id) => {
+  if (!window.confirm("Удалить пользователя?")) return;
+
+  try {
+    await deleteUser(id, token);
+    await loadUsers();
+  } catch (err) {
+    alert("Ошибка удаления");
+  }
+};
 
   // Загрузка справочников при монтировании
   useEffect(() => {
@@ -140,168 +154,6 @@ function PrintPage() {
         ))}
       </div>
 
-      <style>{`
-        .print-page {
-          min-height: 100vh;
-          background: #f5f5f5;
-        }
-
-        /* Панель управления */
-        .controls-panel {
-          max-width: 500px;
-          margin: 0 auto;
-          padding: 20px;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .controls-panel h2 {
-          margin-top: 0;
-          color: #333;
-        }
-
-        .form-group {
-          margin-bottom: 15px;
-        }
-
-        .form-group label {
-          display: block;
-          margin-bottom: 5px;
-          font-weight: 500;
-          color: #555;
-        }
-
-        .form-group select {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          font-size: 16px;
-        }
-
-        .button-group {
-          display: flex;
-          gap: 10px;
-          margin-top: 20px;
-        }
-
-        .button-group button {
-          flex: 1;
-          padding: 12px;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .button-group button:first-child {
-          background: #007bff;
-          color: white;
-        }
-
-        .button-group button:first-child:hover {
-          background: #0056b3;
-        }
-
-        .button-group button:last-child {
-          background: #28a745;
-          color: white;
-        }
-
-        .button-group button:last-child:hover {
-          background: #1e7e34;
-        }
-
-        .button-group button:disabled {
-          background: #ccc;
-          cursor: not-allowed;
-        }
-
-        .error-message {
-          background: #f8d7da;
-          color: #721c24;
-          padding: 10px;
-          border-radius: 8px;
-          margin-bottom: 15px;
-        }
-
-        /* Область печати A4 - формат наклейки 90x50mm */
-        .print-area {
-          display: grid;
-          grid-template-columns: repeat(2, 90mm);
-          justify-content: center;
-          gap: 10mm;
-          padding: 20px;
-        }
-
-        .card {
-          width: 90mm;
-          height: 50mm;
-          border: 2px solid black;
-          padding: 8px;
-          font-size: 12px;
-          background: white;
-          break-inside: avoid;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          box-sizing: border-box;
-        }
-
-        .card .inv-number {
-          font-weight: bold;
-          font-size: 14px;
-          margin-bottom: 6px;
-          text-align: center;
-          border-bottom: 1px solid #ccc;
-          padding-bottom: 4px;
-        }
-
-        .card .location {
-          font-size: 10px;
-          color: #555;
-          margin-bottom: 4px;
-          text-align: center;
-        }
-
-        .card .name {
-          font-size: 12px;
-          font-weight: 500;
-          text-align: center;
-          margin-top: 4px;
-          word-break: break-word;
-        }
-
-        /* Стили для печати */
-        @media print {
-          body {
-            margin: 0;
-            padding: 0;
-          }
-
-          .no-print {
-            display: none !important;
-          }
-
-          .print-area {
-            width: 210mm;
-            padding: 10mm;
-            margin: 0;
-            gap: 8px;
-          }
-
-          .card {
-            border: 2px solid black;
-            break-inside: avoid;
-            page-break-inside: avoid;
-            width: 90mm;
-            height: 50mm;
-          }
-        }
-      `}</style>
     </div>
   );
 }

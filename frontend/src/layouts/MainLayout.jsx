@@ -61,11 +61,11 @@ function MainLayout() {
     { to: "/scan", label: t("Scan Mode"), shortLabel: "S", show: true },
     { to: "/audit", label: t("Inventory Audit"), shortLabel: "I", show: true },
     // 👇 ДОБАВЛЕН ПУНКТ "Печать"
-    { to: "/print", label: "🖨 Печать", shortLabel: "P", show: true },
+    { to: "/print", label: t("Print"), shortLabel: "P", show: true },
   ];
 
   const adminNavItems = [
-    { to: "/users/add", label: "Add User", shortLabel: "U", show: isAdmin },
+    { to: "/users/add", label: t("Add User"), shortLabel: "U", show: isAdmin },
   ];
 
   return (
