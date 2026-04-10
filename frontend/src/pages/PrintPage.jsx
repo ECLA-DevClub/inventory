@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { getBuildings, getRooms, getFurniture } from "../api";
-import QRCode from "qrcode"; // ✅ Импорт QRCode
 import "../index.css";
 
 function PrintPage() {
@@ -45,7 +44,7 @@ function PrintPage() {
     }
   }, [selectedBuilding, rooms]);
 
-  // ✅ НОВАЯ функция для генерации PDF с QR-кодами
+  // ✅ Функция для генерации PDF с QR-кодами (правильная сетка)
   const handleDownload = async () => {
     if (!selectedBuilding || !selectedRoom) {
       setError("Выберите этаж и комнату");
@@ -72,39 +71,76 @@ function PrintPage() {
       // Динамически подключаем jsPDF
       const { jsPDF } = await import("jspdf");
 
-      const pdf = new jsPDF();
+      // Явно задаем формат A4
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
-      let x = 10;
-      let y = 10;
+      // ✅ ПРАВИЛЬНАЯ СЕТКА: 3 колонки, 6 строк = 18 этикеток на страницу
+      const cols = 3;
+      const rows = 6;
 
-      const size = 40;
-      const gap = 10;
+      const marginX = 10;
+      const marginY = 10;
+
+      const cellWidth = 60;
+      const cellHeight = 45;
+
+      const qrSize = 30;
+
+      // Динамически подключаем qrcode один раз
+      const QRCodeLib = await import("qrcode");
+      const QRCode = QRCodeLib.default;
 
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
 
-        const qrData = item.qr || `INV-${item.id}`;
+        const qrData = item.qr;
+        if (!qrData) continue;
 
         const qrImage = await QRCode.toDataURL(qrData);
 
-        pdf.addImage(qrImage, "PNG", x, y, size, size);
+        const col = i % cols;
+        const row = Math.floor(i / cols) % rows;
 
-        pdf.setFontSize(8);
-        pdf.text(item.name || "", x, y + size + 4);
-        pdf.text(qrData, x, y + size + 8);
+        const pageIndex = Math.floor(i / (cols * rows));
 
-        x += size + gap;
-
-        if (x > 170) {
-          x = 10;
-          y += size + 20;
-        }
-
-        if (y > 270) {
+        // Добавляем новую страницу после заполнения предыдущей
+        if (i > 0 && i % (cols * rows) === 0) {
           pdf.addPage();
-          x = 10;
-          y = 10;
         }
+
+        const x = marginX + col * cellWidth;
+        const y = marginY + row * cellHeight;
+
+        // QR по центру ячейки
+        pdf.addImage(
+          qrImage,
+          "PNG",
+          x + (cellWidth - qrSize) / 2,
+          y,
+          qrSize,
+          qrSize
+        );
+
+        pdf.setFontSize(7);
+
+        // Название (центрировано)
+        pdf.text(item.name || "", x + cellWidth / 2, y + qrSize + 5, {
+          maxWidth: cellWidth,
+          align: "center",
+        });
+
+        // Код (центрировано)
+        pdf.text(qrData, x + cellWidth / 2, y + qrSize + 9, {
+          maxWidth: cellWidth,
+          align: "center",
+        });
+
+        // Рамка (как наклейка)
+        pdf.rect(x, y, cellWidth, cellHeight);
       }
 
       pdf.save("qr-labels.pdf");
