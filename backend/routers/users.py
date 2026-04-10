@@ -77,3 +77,52 @@ def update_user_role(
     db.commit()
     db.refresh(user)
     return user
+
+
+# ✅ DELETE /users/{user_id} - удаление пользователя
+@router.delete("/{user_id}", status_code=status.HTTP_200_OK)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("admin")),
+):
+    # Находим пользователя по ID
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    # Если пользователь не найден - возвращаем 404
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Пользователь не найден"
+        )
+    
+    # Опционально: защита от удаления самого себя
+    if current_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Нельзя удалить самого себя"
+        )
+    
+    # Опционально: защита от удаления последнего админа
+    if user.role == "admin":
+        admin_count = db.query(models.User).filter(models.User.role == "admin").count()
+        if admin_count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Нельзя удалить последнего администратора"
+            )
+    
+    # Удаляем пользователя
+    db.delete(user)
+    db.commit()
+    
+    return {
+        "message": "Пользователь успешно удален",
+        "user_id": user_id,
+        "deleted_user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": user.role
+        }
+    }
