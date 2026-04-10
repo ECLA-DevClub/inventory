@@ -31,6 +31,7 @@ function AddUser() {
   const [usersError, setUsersError] = useState("");
   const [usersOpen, setUsersOpen] = useState(true);
   const [openUserId, setOpenUserId] = useState(null);
+  const [deleteId, setDeleteId] = useState(null); // ✅ ДОБАВЛЕН STATE ДЛЯ УДАЛЕНИЯ
 
   const trimmedFullName = useMemo(() => fullName.trim(), [fullName]);
   const trimmedEmail = useMemo(() => email.trim(), [email]);
@@ -71,7 +72,7 @@ function AddUser() {
       return;
     }
 
-    if (!window.confirm("Удалить пользователя?")) return;
+    // ❌ УДАЛЕН window.confirm
 
     try {
       await deleteUser(id, token);
@@ -456,7 +457,7 @@ function AddUser() {
                             {/* Кнопка удаления - не показываем для текущего пользователя */}
                             {userItem.id !== currentUserId && (
                               <button
-                                onClick={() => handleDeleteUser(userItem.id)}
+                                onClick={() => setDeleteId(userItem.id)} // ✅ ИЗМЕНЕНО
                                 className="mt-2 rounded bg-red-500 px-3 py-1 text-sm hover:bg-red-600 transition-colors"
                               >
                                 Удалить
@@ -480,6 +481,38 @@ function AddUser() {
           )}
         </div>
       </div>
+
+      {/* ✅ MODAL ОКНО ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-slate-900 p-6 shadow-2xl">
+            
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Удалить пользователя?
+            </h3>
+
+            <div className="flex gap-3 justify-center">
+              <button
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                onClick={async () => {
+                  await handleDeleteUser(deleteId);
+                  setDeleteId(null);
+                }}
+              >
+                Удалить
+              </button>
+
+              <button
+                className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/10 transition-colors"
+                onClick={() => setDeleteId(null)}
+              >
+                Отмена
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
