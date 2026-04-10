@@ -89,6 +89,11 @@ def ensure_furniture_schema():
             conn.execute(text("ALTER TABLE furniture ADD COLUMN condition_check_interval_days INTEGER"))
             changed = True
 
+        # 👇 ДОБАВЛЕНО ПОЛЕ ДЛЯ QR КОДА
+        if "qr" not in columns:
+            conn.execute(text("ALTER TABLE furniture ADD COLUMN qr TEXT"))
+            changed = True
+
         if changed:
             conn.commit()
 
