@@ -79,7 +79,7 @@ def update_user_role(
     return user
 
 
-# ✅ DELETE /users/{user_id} - удаление пользователя
+# DELETE /users/{user_id} - удаление пользователя
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 def delete_user(
     user_id: int,

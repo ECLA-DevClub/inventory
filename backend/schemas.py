@@ -68,16 +68,20 @@ class UserResponse(BaseModel):
 # СПРАВОЧНИКИ (References)
 # =========================
 
+# --- Схемы создания (Create) ---
 class FurnitureTypeCreate(BaseModel):
     name: str
+    hex_code: str = Field(..., description="Короткий код для инвентарного номера")
 
 
 class BuildingCreate(BaseModel):
     name: str
+    hex_code: str = Field(..., description="Короткий код здания)")
 
 
 class RoomCreate(BaseModel):
     name: str
+    hex_code: str = Field(..., description="Короткий код комнаты")
     building_id: int
 
 
@@ -85,9 +89,16 @@ class ConditionCreate(BaseModel):
     name: str
 
 
+class ResponsiblePersonCreate(BaseModel):
+    full_name: str
+    hex_code: str = Field(..., description="Короткий код ответственного")
+
+
+# --- Схемы ответа (Response) ---
 class FurnitureTypeResponse(BaseModel):
     id: int
     name: str
+    hex_code: str
 
     class Config:
         from_attributes = True
@@ -96,6 +107,7 @@ class FurnitureTypeResponse(BaseModel):
 class BuildingResponse(BaseModel):
     id: int
     name: str
+    hex_code: str
 
     class Config:
         from_attributes = True
@@ -104,6 +116,7 @@ class BuildingResponse(BaseModel):
 class RoomResponse(BaseModel):
     id: int
     name: str
+    hex_code: str
     building_id: int
 
     class Config:
@@ -113,6 +126,15 @@ class RoomResponse(BaseModel):
 class ConditionResponse(BaseModel):
     id: int
     name: str
+
+    class Config:
+        from_attributes = True
+
+
+class ResponsiblePersonResponse(BaseModel):
+    id: int
+    full_name: str
+    hex_code: str
 
     class Config:
         from_attributes = True
@@ -129,13 +151,16 @@ class FurnitureCreate(BaseModel):
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
+
+    # Заменили текстовое поле на ID из новой таблицы
+    responsible_id: Optional[int] = None
+
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
     price_kgs: Optional[int] = None
-    responsible_person: Optional[str] = None
     quantity: int = 1
-    photo_url: Optional[str] = None  # ДОБАВЛЕНО поле для URL фото
+    photo_url: Optional[str] = None
 
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
@@ -148,11 +173,13 @@ class FurnitureUpdate(BaseModel):
     building_id: int
     room_id: int
     condition_id: Optional[int] = None
+
+    responsible_id: Optional[int] = None
+
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
     price_kgs: Optional[int] = None
-    responsible_person: Optional[str] = None
 
     last_condition_check_date: Optional[date] = None
     next_condition_check_date: Optional[date] = None
@@ -209,19 +236,27 @@ class FurnitureResponse(BaseModel):
     id: int
     inv_number: Optional[str] = None
     name: str
+
     type_id: Optional[int] = None
     type_name: Optional[str] = None
+
     building_id: Optional[int] = None
     building_name: Optional[str] = None
+
     room_id: Optional[int] = None
     room_name: Optional[str] = None
+
     condition_id: Optional[int] = None
     condition_name: Optional[str] = None
+
+    # Обновленные поля для ответственного лица
+    responsible_id: Optional[int] = None
+    responsible_name: Optional[str] = None
+
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
     price_kgs: Optional[int] = None
-    responsible_person: Optional[str] = None
     photo_url: Optional[str] = None
 
     last_condition_check_date: Optional[date] = None
