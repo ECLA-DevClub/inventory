@@ -240,7 +240,7 @@ allowed_origins = [
     "http://127.0.0.1:5173",
     "https://ecla-devclub.github.io",
     "https://ecla-devclub.github.io/inventory",
-    "https://inventory-7cb9.vercel.app",
+    "https://inventorycom-git-main-sidikovoa11l044-2899s-projects.vercel.app",
 ]
 
 if frontend_public_url and frontend_public_url not in allowed_origins:
