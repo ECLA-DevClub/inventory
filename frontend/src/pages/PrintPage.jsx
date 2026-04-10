@@ -97,15 +97,14 @@ function PrintPage() {
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
 
-        const qrData = item.qr;
-        if (!qrData) continue;
+        // ✅ ИСПРАВЛЕНО: используем item.id, а не item.qr
+        const qrData = String(item.id);
+        // ❌ УДАЛЕНА проверка if (!qrData) continue;
 
         const qrImage = await QRCode.toDataURL(qrData);
 
         const col = i % cols;
         const row = Math.floor(i / cols) % rows;
-
-        const pageIndex = Math.floor(i / (cols * rows));
 
         // Добавляем новую страницу после заполнения предыдущей
         if (i > 0 && i % (cols * rows) === 0) {
@@ -133,7 +132,7 @@ function PrintPage() {
           align: "center",
         });
 
-        // Код (центрировано)
+        // ID (центрировано) - сканер будет читать ID
         pdf.text(qrData, x + cellWidth / 2, y + qrSize + 9, {
           maxWidth: cellWidth,
           align: "center",
