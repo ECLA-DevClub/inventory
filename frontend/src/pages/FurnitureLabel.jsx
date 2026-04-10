@@ -3,11 +3,11 @@ import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { QRCodeCanvas } from "qrcode.react"; // ✅ Добавлен импорт QRCodeCanvas
 import {
   getFurnitureById,
-  getFurnitureQrUrl,
   resolveAssetUrl,
-} from "../api";
+} from "../api"; // ❌ Удален getFurnitureQrUrl
 
 function FurnitureLabel() {
   const { t } = useTranslation();
@@ -48,10 +48,10 @@ function FurnitureLabel() {
     return <div className="text-xl text-white">{t("Asset not found")}</div>;
   }
 
-  const qrSrc = getFurnitureQrUrl(item.id);
   const photoSrc = resolveAssetUrl(item.photo_url);
 
   const invValue = item.inv_number || `INV-${item.id}`;
+  const qrValue = item.qr || `INV-${item.id}`; // ✅ Используем item.qr или генерируем
 
   const buildingValue = item.building_name || "—";
 
@@ -150,9 +150,14 @@ function FurnitureLabel() {
     }
   };
 
+  // ✅ ПЕРЕПИСАНА функция downloadQrPdf (без Image, без CORS)
   const downloadQrPdf = async () => {
     try {
       setDownloading(true);
+
+      // Динамически подключаем qrcode
+      const QRCodeLib = await import("qrcode");
+      const QRCode = QRCodeLib.default;
 
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -160,25 +165,12 @@ function FurnitureLabel() {
         format: "a4",
       });
 
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = qrSrc;
-
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
+      // Генерируем QR код напрямую в dataURL
+      const qrData = qrValue;
+      const imgData = await QRCode.toDataURL(qrData, {
+        width: 500,
+        margin: 2,
       });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-
-      const imgData = canvas.toDataURL("image/png");
 
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(18);
@@ -260,10 +252,14 @@ function FurnitureLabel() {
 
           <div className="mt-4 flex justify-center">
             <div className="rounded-2xl border border-black/10 p-3">
-              <img
-                src={qrSrc}
-                alt={`QR ${invValue}`}
-                className="h-48 w-48 object-contain"
+              {/* ✅ ЗАМЕНА <img> на QRCodeCanvas */}
+              <QRCodeCanvas
+                value={qrValue}
+                size={192}
+                bgColor="#ffffff"
+                fgColor="#000000"
+                level="L"
+                includeMargin={false}
               />
             </div>
           </div>
@@ -324,6 +320,7 @@ function FurnitureLabel() {
         </div>
       </div>
 
+      {/* Скрытый элемент для strip PDF */}
       <div className="pointer-events-none fixed left-[-9999px] top-0 opacity-100">
         <div
           ref={stripRef}
@@ -405,6 +402,7 @@ function FurnitureLabel() {
         </div>
       </div>
 
+      {/* Скрытый элемент для info PDF */}
       <div className="pointer-events-none fixed left-[-9999px] top-0 opacity-100">
         <div
           ref={infoRef}
