@@ -2,7 +2,6 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import text
 from passlib.context import CryptContext
 
 import models
@@ -18,45 +17,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Инициализация таблиц
 models.Base.metadata.create_all(bind=engine)
 
-def get_existing_columns(table_name: str) -> list[str]:
-    db_url = str(engine.url)
-    with engine.connect() as conn:
-        if db_url.startswith("sqlite"):
-            result = conn.execute(text(f"PRAGMA table_info({table_name})"))
-            return [row[1] for row in result.fetchall()]
-        result = conn.execute(
-            text("SELECT column_name FROM information_schema.columns WHERE table_name = :table_name"),
-            {"table_name": table_name},
-        )
-        return [row[0] for row in result.fetchall()]
-
-# Миграционные проверки (для работы с существующей базой)
-def ensure_users_schema():
-    columns = get_existing_columns("users")
-    with engine.connect() as conn:
-        if "full_name" not in columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN full_name TEXT"))
-            conn.commit()
-
-def ensure_furniture_schema():
-    columns = get_existing_columns("furniture")
-    with engine.connect() as conn:
-        changed = False
-        # Проверяем ключевые поля для новой версии (HEX и Responsible)
-        fields = [
-            ("price_kgs", "INTEGER"), ("model", "TEXT"), ("manufacturer", "TEXT"),
-            ("purchase_date", "DATE"), ("responsible_id", "INTEGER"),
-            ("qr", "TEXT")
-        ]
-        for field, ftype in fields:
-            if field not in columns:
-                conn.execute(text(f"ALTER TABLE furniture ADD COLUMN {field} {ftype}"))
-                changed = True
-        if changed:
-            conn.commit()
-
 # ============================================================
-# ГЛАВНАЯ ФУНКЦИЯ: СИДИРОВАНИЕ ДАННЫХ (5 РОЛЕЙ)
+# ГЛАВНАЯ ФУНКЦИЯ: СИДИРОВАНИЕ ДАННЫХ
 # ============================================================
 def seed_reference_data():
     db = SessionLocal()
@@ -72,9 +34,8 @@ def seed_reference_data():
             db.commit()
             db.refresh(org)
 
-        # 2. СОЗДАЕМ 5 ПОЛЬЗОВАТЕЛЕЙ ПО ТВОЕМУ СПИСКУ
+        # 2. СОЗДАЕМ 5 ПОЛЬЗОВАТЕЛЕЙ
         if not db.query(models.User).first():
-            # Роли записываем в нижнем регистре для удобства проверки в auth.py
             users_to_seed = [
                 {"name": "Главный Админ", "email": "admin@mail.com", "role": "admin", "pass": "admin123"},
                 {"name": "Менеджер склада", "email": "manager@mail.com", "role": "manager", "pass": "manager123"},
@@ -93,28 +54,19 @@ def seed_reference_data():
             db.commit()
             print("--- 5 пользователей успешно созданы ---")
 
-        # 3. ТИПЫ МЕБЕЛИ (с HEX-кодами для инвентарных номеров)
-        default_types = [
-            {"name": "Стол", "hex": "ST"}, {"name": "Стул", "hex": "SL"}
-        ]
+        # 3. ТИПЫ МЕБЕЛИ
+        default_types = [{"name": "Стол", "hex": "TA"}, {"name": "Стул", "hex": "CH"}]
         for t in default_types:
             exists = db.query(models.FurnitureType).filter_by(name=t["name"], organization_id=org.id).first()
             if not exists:
                 db.add(models.FurnitureType(name=t["name"], hex_code=t["hex"], organization_id=org.id))
 
-        # 4. СОСТОЯНИЯ
+        # 4. СОСТОЯНИЯ (Сделали глобальными, убрали organization_id)
         default_conditions = ["Отличное", "Хорошее", "Удовлетворительное", "Ремонт", "Списано"]
         for c_name in default_conditions:
-            exists = db.query(models.Condition).filter_by(
-                name=c_name,
-                organization_id=org.id
-            ).first()
-
+            exists = db.query(models.Condition).filter_by(name=c_name).first()
             if not exists:
-                db.add(models.Condition(
-                    name=c_name,
-                    organization_id=org.id
-                ))
+                db.add(models.Condition(name=c_name))
 
         # 5. КАРТА ЗДАНИЙ И КОМНАТ
         building_map = {
@@ -126,8 +78,7 @@ def seed_reference_data():
             if not bld:
                 bld = models.Building(name=b_name, hex_code=data["hex"], organization_id=org.id)
                 db.add(bld)
-                db.commit()
-                db.refresh(bld)
+                db.flush()
 
             for r_name, r_hex in data["rooms"]:
                 if not db.query(models.Room).filter_by(name=r_name, building_id=bld.id).first():
@@ -138,6 +89,7 @@ def seed_reference_data():
             db.add(models.ResponsiblePerson(full_name="Общий Склад", hex_code="00", organization_id=org.id))
 
         db.commit()
+        print("--- Справочники успешно инициализированы ---")
     except Exception as e:
         db.rollback()
         print(f"Ошибка при заполнении базы: {e}")
@@ -145,8 +97,6 @@ def seed_reference_data():
         db.close()
 
 # Запуск подготовки базы
-ensure_users_schema()
-ensure_furniture_schema()
 seed_reference_data()
 
 # ============================================================

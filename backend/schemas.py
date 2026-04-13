@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, field_validator, Field
 
 
@@ -24,7 +24,7 @@ class TokenResponse(BaseModel):
 class UserCreate(BaseModel):
     full_name: str
     email: EmailStr
-    password: str = Field(..., min_length=6, max_length=100, description="Пароль должен быть не менее 6 символов")
+    password: str = Field(..., min_length=6, max_length=100)
 
     @field_validator("full_name")
     @classmethod
@@ -38,8 +38,9 @@ class UserCreate(BaseModel):
 class AdminUserCreate(BaseModel):
     full_name: str
     email: EmailStr
-    password: str = Field(..., min_length=6, max_length=100, description="Пароль должен быть не менее 6 символов")
+    password: str = Field(..., min_length=6, max_length=100)
     role: str
+    organization_id: Optional[int] = None
 
     @field_validator("full_name")
     @classmethod
@@ -59,6 +60,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = None
     email: EmailStr
     role: str
+    organization_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -68,20 +70,16 @@ class UserResponse(BaseModel):
 # СПРАВОЧНИКИ (References)
 # =========================
 
-# --- Схемы создания (Create) ---
 class FurnitureTypeCreate(BaseModel):
     name: str
-    hex_code: str = Field(..., description="Короткий код для инвентарного номера")
 
 
 class BuildingCreate(BaseModel):
     name: str
-    hex_code: str = Field(..., description="Короткий код здания)")
 
 
 class RoomCreate(BaseModel):
     name: str
-    hex_code: str = Field(..., description="Короткий код комнаты")
     building_id: int
 
 
@@ -91,14 +89,11 @@ class ConditionCreate(BaseModel):
 
 class ResponsiblePersonCreate(BaseModel):
     full_name: str
-    hex_code: str = Field(..., description="Короткий код ответственного")
 
-
-# --- Схемы ответа (Response) ---
 class FurnitureTypeResponse(BaseModel):
     id: int
     name: str
-    hex_code: str
+    hex_code: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -107,7 +102,7 @@ class FurnitureTypeResponse(BaseModel):
 class BuildingResponse(BaseModel):
     id: int
     name: str
-    hex_code: str
+    hex_code: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -116,7 +111,7 @@ class BuildingResponse(BaseModel):
 class RoomResponse(BaseModel):
     id: int
     name: str
-    hex_code: str
+    hex_code: Optional[str] = None
     building_id: int
 
     class Config:
@@ -134,7 +129,7 @@ class ConditionResponse(BaseModel):
 class ResponsiblePersonResponse(BaseModel):
     id: int
     full_name: str
-    hex_code: str
+    hex_code: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -146,24 +141,20 @@ class ResponsiblePersonResponse(BaseModel):
 
 class FurnitureCreate(BaseModel):
     name: str
-    inv_number: Optional[str] = None
+
     type_id: int
     building_id: int
     room_id: int
-    condition_id: Optional[int] = None
-
-    # Заменили текстовое поле на ID из новой таблицы
-    responsible_id: Optional[int] = None
+    responsible_id: int
+    condition_id: int
 
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
     price_kgs: Optional[int] = None
-    quantity: int = 1
+    quantity: int = Field(1, ge=1, le=100)
     photo_url: Optional[str] = None
 
-    last_condition_check_date: Optional[date] = None
-    next_condition_check_date: Optional[date] = None
     condition_check_interval_days: Optional[int] = None
 
 
@@ -172,42 +163,21 @@ class FurnitureUpdate(BaseModel):
     type_id: int
     building_id: int
     room_id: int
-    condition_id: Optional[int] = None
-
-    responsible_id: Optional[int] = None
+    condition_id: int
+    responsible_id: int
 
     model: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_date: Optional[date] = None
     price_kgs: Optional[int] = None
 
-    last_condition_check_date: Optional[date] = None
-    next_condition_check_date: Optional[date] = None
-    condition_check_interval_days: Optional[int] = None
-
-    change_reason: str
-
-    @field_validator("change_reason")
-    @classmethod
-    def validate_change_reason(cls, v: str) -> str:
-        value = (v or "").strip()
-        if len(value) < 5:
-            raise ValueError("Причина изменения должна содержать минимум 5 символов")
-        return value
+    change_reason: str = Field(..., min_length=5)
 
 
 class FurnitureMove(BaseModel):
     building_id: int
     room_id: int
-    change_reason: str
-
-    @field_validator("change_reason")
-    @classmethod
-    def validate_change_reason(cls, v: str) -> str:
-        value = (v or "").strip()
-        if len(value) < 5:
-            raise ValueError("Причина перемещения должна содержать минимум 5 символов")
-        return value
+    change_reason: str = Field(..., min_length=5)
 
 
 class FurnitureDisposalRequest(BaseModel):
@@ -249,7 +219,6 @@ class FurnitureResponse(BaseModel):
     condition_id: Optional[int] = None
     condition_name: Optional[str] = None
 
-    # Обновленные поля для ответственного лица
     responsible_id: Optional[int] = None
     responsible_name: Optional[str] = None
 
@@ -258,10 +227,6 @@ class FurnitureResponse(BaseModel):
     purchase_date: Optional[date] = None
     price_kgs: Optional[int] = None
     photo_url: Optional[str] = None
-
-    last_condition_check_date: Optional[date] = None
-    next_condition_check_date: Optional[date] = None
-    condition_check_interval_days: Optional[int] = None
 
     created_at: datetime
 

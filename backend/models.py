@@ -20,7 +20,8 @@ class Organization(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    # Уникальный код организации для инвентарного номера (например, "01")
+    # HEX-код организации (напр. "01") остается обязательным,
+    # так как задается при создании компании супер-админом.
     hex_code = Column(String, unique=True, index=True, nullable=False)
 
     users = relationship("User", back_populates="organization")
@@ -28,7 +29,6 @@ class Organization(Base):
     buildings = relationship("Building", back_populates="organization")
     rooms = relationship("Room", back_populates="organization")
     furniture_types = relationship("FurnitureType", back_populates="organization")
-    conditions = relationship("Condition", back_populates="organization")
     sequences = relationship("OrganizationSequence", back_populates="organization")
     responsible_persons = relationship("ResponsiblePerson", back_populates="organization")
 
@@ -62,7 +62,7 @@ class User(Base):
 
 
 # =========================
-# СПРАВОЧНИКИ
+# СПРАВОЧНИКИ (С автогенерацией HEX)
 # =========================
 
 class ResponsiblePerson(Base):
@@ -74,10 +74,10 @@ class ResponsiblePerson(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, nullable=False)
-    hex_code = Column(String, nullable=False)  # Код для RESP в инвентарном номере
+    # nullable=True для автоматической генерации на бэкенде
+    hex_code = Column(String, nullable=True)
 
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
-
     organization = relationship("Organization", back_populates="responsible_persons")
     furniture = relationship("Furniture", back_populates="responsible_person")
 
@@ -91,10 +91,9 @@ class FurnitureType(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    hex_code = Column(String, nullable=False)
+    hex_code = Column(String, nullable=True)
 
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
-
     organization = relationship("Organization", back_populates="furniture_types")
     furniture = relationship("Furniture", back_populates="furniture_type")
 
@@ -108,10 +107,9 @@ class Building(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    hex_code = Column(String, nullable=False)
+    hex_code = Column(String, nullable=True)
 
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
-
     organization = relationship("Organization", back_populates="buildings")
     rooms = relationship("Room", back_populates="building")
     furniture = relationship("Furniture", back_populates="building")
@@ -126,7 +124,7 @@ class Room(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    hex_code = Column(String, nullable=False)
+    hex_code = Column(String, nullable=True)
 
     building_id = Column(Integer, ForeignKey("building.id", ondelete="CASCADE"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
@@ -137,17 +135,12 @@ class Room(Base):
 
 
 class Condition(Base):
+    """ Глобальный справочник состояний (общий для всех) """
     __tablename__ = "condition"
-    __table_args__ = (
-        UniqueConstraint('organization_id', 'name', name='uix_org_condition_name'),
-    )
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
+    name = Column(String, unique=True, nullable=False) # Уникальное имя на всю систему
 
-    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
-
-    organization = relationship("Organization", back_populates="conditions")
     furniture = relationship("Furniture", back_populates="condition")
 
 
@@ -162,7 +155,7 @@ class Furniture(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    inv_number = Column(String, index=True, nullable=True)  # Итоговый HEX-код
+    inv_number = Column(String, index=True, nullable=True)  # Итоговый HEX-код (ORG-TYP-BLD-RM-RESP-UID)
     name = Column(String, nullable=False)
     qr = Column(String, unique=True, index=True, nullable=True)
 
@@ -188,7 +181,6 @@ class Furniture(Base):
     building_id = Column(Integer, ForeignKey("building.id", ondelete="SET NULL"), nullable=True)
     room_id = Column(Integer, ForeignKey("room.id", ondelete="SET NULL"), nullable=True)
     condition_id = Column(Integer, ForeignKey("condition.id", ondelete="SET NULL"), nullable=True)
-    # Новая связь с ответственным лицом
     responsible_id = Column(Integer, ForeignKey("responsible_person.id", ondelete="SET NULL"), nullable=True)
 
     organization = relationship("Organization", back_populates="furniture")
