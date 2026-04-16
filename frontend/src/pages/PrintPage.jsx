@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { getBuildings, getRooms, getFurniture } from "../api";
 import "../index.css";
 
@@ -6,6 +7,7 @@ import "../index.css";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function PrintPage() {
+  const { t } = useTranslation();
   const [buildings, setBuildings] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [filteredRooms, setFilteredRooms] = useState([]);
@@ -77,7 +79,7 @@ function PrintPage() {
 
   const loadPreview = async () => {
     if (!selectedBuilding || !selectedRoom) {
-      setError("Выберите этаж и комнату");
+      setError(t("print.select_error"));
       return;
     }
 
@@ -108,7 +110,7 @@ function PrintPage() {
       setQrImages(qrMap);
     } catch (err) {
       console.error(err);
-      setError("Ошибка загрузки данных");
+      setError(t("print.load_error"));
     } finally {
       setLoading(false);
     }
@@ -117,7 +119,7 @@ function PrintPage() {
   // Функция для генерации PDF с QR-кодами (правильная сетка)
   const handleDownload = async () => {
     if (!selectedBuilding || !selectedRoom) {
-      setError("Выберите этаж и комнату");
+      setError(t("print.select_error"));
       return;
     }
 
@@ -133,7 +135,7 @@ function PrintPage() {
       const data = await getFurniture(filters);
 
       if (!data || data.length === 0) {
-        setError("В этой комнате нет мебели");
+        setError(t("print.no_furniture"));
         setLoading(false);
         return;
       }
@@ -208,7 +210,7 @@ function PrintPage() {
       pdf.save("qr-labels.pdf");
     } catch (err) {
       console.error(err);
-      setError("Ошибка генерации PDF");
+      setError(t("print.pdf_error"));
     } finally {
       setLoading(false);
     }
@@ -224,10 +226,10 @@ function PrintPage() {
               PRINT WORKFLOW
             </div>
             <h2 className="mt-2 text-3xl font-bold">
-              Generate QR Labels
+              {t("print.title")}
             </h2>
             <p className="mt-2 text-white/60">
-              Choose a building and room, then download QR labels for all assets.
+              {t("print.description")}
             </p>
           </div>
 
@@ -240,7 +242,7 @@ function PrintPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm text-white/60">
-                Building
+                {t("print.building")}
               </label>
               <select
                 value={selectedBuilding}
@@ -248,7 +250,7 @@ function PrintPage() {
                 className="w-full rounded-xl bg-white/10 p-3 outline-none backdrop-blur focus:ring-2 focus:ring-blue-500"
                 style={{ color: "white" }}
               >
-                <option value="" className="text-black">Choose floor</option>
+                <option value="" className="text-black">{t("print.choose_floor")}</option>
                 {buildings.map((b) => (
                   <option key={b.id} value={b.id} className="text-black">
                     {b.name}
@@ -259,7 +261,7 @@ function PrintPage() {
 
             <div>
               <label className="mb-2 block text-sm text-white/60">
-                Room
+                {t("print.room")}
               </label>
               <select
                 value={selectedRoom}
@@ -268,7 +270,7 @@ function PrintPage() {
                 className="w-full rounded-xl bg-white/10 p-3 outline-none backdrop-blur focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 style={{ color: "white" }}
               >
-                <option value="" className="text-black">Choose room</option>
+                <option value="" className="text-black">{t("print.choose_room")}</option>
                 {filteredRooms.map((r) => (
                   <option key={r.id} value={r.id} className="text-black">
                     {r.name}
@@ -284,7 +286,7 @@ function PrintPage() {
               disabled={loading}
               className="w-full mb-3 rounded-xl bg-purple-600 py-3 font-semibold transition hover:bg-purple-700 disabled:opacity-60"
             >
-              {loading ? "Loading..." : "Preview Labels"}
+              {loading ? t("print.loading") : t("print.preview")}
             </button>
             
             <button
@@ -292,23 +294,23 @@ function PrintPage() {
               disabled={loading}
               className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-700 disabled:opacity-60"
             >
-              {loading ? "Generating..." : "Download QR PDF"}
+              {loading ? t("print.generating") : t("print.download")}
             </button>
           </div>
 
           {previewData.length > 0 && (
             <div className="mt-8 bg-white p-4 rounded-xl text-black">
-              <h3 className="mb-4 font-bold text-lg">Preview (A4)</h3>
+              <h3 className="mb-4 font-bold text-lg">{t("print.preview_title")}</h3>
 
               <div className="grid grid-cols-3 gap-4">
                 {previewData.map((item, index) => (
                   <div
                     key={index}
-                    className="bg-white rounded-xl shadow-md flex flex-col items-center justify-between p-2 border"
+                    className="bg-white rounded-xl shadow-md flex flex-col items-center justify-center gap-1 p-2 border"
                     style={{ height: "240px" }}
                   >
                     {/* Название */}
-                    <div className="text-[11px] font-semibold text-center leading-tight">
+                    <div className="text-[11px] font-semibold text-center leading-tight mt-0.5">
                       {item.name}
                     </div>
 
@@ -320,7 +322,7 @@ function PrintPage() {
                     />
 
                     {/* CODE как бейдж */}
-                    <div className="text-[12px] font-mono bg-gray-100 px-2 py-1 rounded-md">
+                    <div className="text-[12px] font-mono bg-gray-100 px-2 py-1 rounded-md mt-0.5">
                       {item.code}
                     </div>
                   </div>

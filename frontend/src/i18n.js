@@ -247,7 +247,26 @@ const resources = {
       "All conditions": "All conditions",
       "Search by manufacturer": "Search by manufacturer",
       "Reset filters": "Reset filters",
-      "Delete error": "Delete error"
+      "Delete error": "Delete error",
+
+      // PRINT PAGE TRANSLATIONS
+      print: {
+        title: "Generate QR Labels",
+        description: "Choose a building and room, then download QR labels",
+        building: "Building",
+        room: "Room",
+        preview: "Preview Labels",
+        download: "Download QR PDF",
+        preview_title: "Preview (A4)",
+        choose_floor: "Choose floor",
+        choose_room: "Choose room",
+        loading: "Loading...",
+        generating: "Generating...",
+        select_error: "Please select a building and room",
+        load_error: "Error loading data",
+        no_furniture: "No furniture in this room",
+        pdf_error: "Error generating PDF"
+      }
     }
   },
 
@@ -496,7 +515,26 @@ const resources = {
       "All conditions": "Все состояния",
       "Search by manufacturer": "Поиск по производителю",
       "Reset filters": "Сбросить фильтры",
-      "Delete error": "Ошибка удаления"
+      "Delete error": "Ошибка удаления",
+
+      // PRINT PAGE TRANSLATIONS
+      print: {
+        title: "Генерация QR наклеек",
+        description: "Выберите этаж и кабинет, затем скачайте QR",
+        building: "Этаж",
+        room: "Кабинет",
+        preview: "Предпросмотр",
+        download: "Скачать PDF",
+        preview_title: "Предпросмотр (A4)",
+        choose_floor: "Выберите этаж",
+        choose_room: "Выберите кабинет",
+        loading: "Загрузка...",
+        generating: "Генерация...",
+        select_error: "Выберите этаж и кабинет",
+        load_error: "Ошибка загрузки данных",
+        no_furniture: "В этой комнате нет мебели",
+        pdf_error: "Ошибка генерации PDF"
+      }
     }
   }
 };

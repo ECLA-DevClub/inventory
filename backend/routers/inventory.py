@@ -418,7 +418,7 @@ async def create_furniture(
         floor = 1
         if building_obj:
             try:
-                floor = int(building_obj.name)
+                floor = int(building_obj.name.split()[0])
             except:
                 floor = 1
         
