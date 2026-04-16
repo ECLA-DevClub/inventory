@@ -306,11 +306,11 @@ function PrintPage() {
                 {previewData.map((item, index) => (
                   <div
                     key={index}
-                    className="bg-white rounded-xl shadow-md flex flex-col items-center justify-center gap-1 p-2 border"
+                    className="bg-white rounded-xl shadow-md flex flex-col items-center justify-between p-3 border"
                     style={{ height: "240px" }}
                   >
                     {/* Название */}
-                    <div className="text-[11px] font-semibold text-center leading-tight mt-0.5">
+                    <div className="text-[11px] font-semibold text-center leading-tight">
                       {item.name}
                     </div>
 
@@ -318,11 +318,11 @@ function PrintPage() {
                     <img
                       src={qrImages[item.id]}
                       alt="qr"
-                      className="w-30 h-30"
+                      className="w-28 h-28"
                     />
 
                     {/* CODE как бейдж */}
-                    <div className="text-[12px] font-mono bg-gray-100 px-2 py-1 rounded-md mt-0.5">
+                    <div className="text-[10px] font-mono bg-gray-100 px-2 py-1 rounded-md text-center w-full">
                       {item.code}
                     </div>
                   </div>
