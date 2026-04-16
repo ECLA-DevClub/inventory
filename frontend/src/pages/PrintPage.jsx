@@ -11,6 +11,7 @@ function PrintPage() {
   const [furnitureList, setFurnitureList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [previewData, setPreviewData] = useState([]);
 
   // Загрузка справочников при монтировании
   useEffect(() => {
@@ -43,6 +44,31 @@ function PrintPage() {
       setFilteredRooms([]);
     }
   }, [selectedBuilding, rooms]);
+
+  const loadPreview = async () => {
+    if (!selectedBuilding || !selectedRoom) {
+      setError("Выберите этаж и комнату");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const filters = {
+        building_id: Number(selectedBuilding),
+        room_id: Number(selectedRoom),
+      };
+
+      const data = await getFurniture(filters);
+      setPreviewData(data || []);
+    } catch (err) {
+      console.error(err);
+      setError("Ошибка загрузки данных");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Функция для генерации PDF с QR-кодами (правильная сетка)
   const handleDownload = async () => {
@@ -97,8 +123,8 @@ function PrintPage() {
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
 
-        // Используем item.id для QR-кода
-        const qrData = String(item.id);
+        // ✅ ИСПРАВЛЕНО: используем полный URL вместо ID
+        const qrData = `${window.location.origin}/furniture/${item.id}`;
 
         const qrImage = await QRCode.toDataURL(qrData);
 
@@ -131,8 +157,8 @@ function PrintPage() {
           align: "center",
         });
 
-        // ID (центрировано) - сканер будет читать ID
-        pdf.text(qrData, x + cellWidth / 2, y + qrSize + 9, {
+        // ✅ ИСПРАВЛЕНО: выводим code вместо ID
+        pdf.text(item.code || "", x + cellWidth / 2, y + qrSize + 9, {
           maxWidth: cellWidth,
           align: "center",
         });
@@ -216,6 +242,14 @@ function PrintPage() {
 
           <div className="mt-6">
             <button
+              onClick={loadPreview}
+              disabled={loading}
+              className="w-full mb-3 rounded-xl bg-purple-600 py-3 font-semibold transition hover:bg-purple-700 disabled:opacity-60"
+            >
+              {loading ? "Loading..." : "Preview Labels"}
+            </button>
+            
+            <button
               onClick={handleDownload}
               disabled={loading}
               className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-700 disabled:opacity-60"
@@ -223,6 +257,39 @@ function PrintPage() {
               {loading ? "Generating..." : "Download QR PDF"}
             </button>
           </div>
+
+          {previewData.length > 0 && (
+            <div className="mt-8 bg-white p-4 rounded-xl text-black">
+              <h3 className="mb-4 font-bold text-lg">Preview (A4)</h3>
+
+              <div className="grid grid-cols-3 gap-4">
+                {previewData.map((item, index) => (
+                  <div
+                    key={index}
+                    className="bg-white rounded-xl shadow-md flex flex-col items-center justify-between p-2 border"
+                    style={{ height: "180px" }}
+                  >
+                    {/* Название */}
+                    <div className="text-[11px] font-semibold text-center leading-tight">
+                      {item.name}
+                    </div>
+
+                    {/* QR */}
+                    <img
+                      src={`${window.location.origin}/furniture/${item.id}/qr`}
+                      alt="qr"
+                      className="w-20 h-20"
+                    />
+
+                    {/* CODE как бейдж */}
+                    <div className="text-[10px] font-mono bg-gray-100 px-2 py-1 rounded-md">
+                      {item.code}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

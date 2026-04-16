@@ -168,6 +168,7 @@ def furniture_to_response(item: models.Furniture):
     
     return {
         "id": item.id,
+        "code": item.code,
         "inv_number": item.inv_number,
         "name": item.name,
         "type_id": item.type_id,
@@ -395,13 +396,46 @@ async def create_furniture(
     if photo:
         photo_url = upload_file_to_s3(photo)
     
+    # ВЫНОСИМ ЗАПРОСЫ ИЗ ЦИКЛА (один раз)
+    building_obj = db.query(models.Building).filter(models.Building.id == building_id).first()
+    room_obj = db.query(models.Room).filter(models.Room.id == room_id).first()
+    
     created_items = []
     
     # Цикл для создания quantity объектов
     for i in range(quantity):
         inv_number = f"INV-{next_number + i:04d}"
         
+        # ===== Генерация code =====
+        
+        # ORG (пока ставим 1, потом можно автоматизировать)
+        org_id = 1
+        
+        # TYPE
+        type_code = type_id
+        
+        # FLOOR (берём из названия здания, если число)
+        floor = 1
+        if building_obj:
+            try:
+                floor = int(building_obj.name)
+            except:
+                floor = 1
+        
+        # ROOM (берём первые 4 символа, чтобы избежать спецсимволов)
+        room_code = (room_obj.name or "000")[:4]
+        
+        # RESP (только первые 2 буквы в верхнем регистре)
+        resp = (responsible_person or "XX")[:2].upper()
+        
+        # INV (номер)
+        inv_short = f"{next_number + i:04d}"
+        
+        # финальный код
+        code = f"{org_id}-{type_code}-{floor}-{room_code}-{resp}-{inv_short}"
+        
         db_item = models.Furniture(
+            code=code,
             inv_number=inv_number,
             name=name,
             type_id=type_id,
@@ -467,7 +501,7 @@ def update_furniture(
     item = db.query(models.Furniture).filter(models.Furniture.id == furniture_id).first()
 
     if not item:
-        raise HTTPException(status_code=404, detail="Мебель не найдена")
+        raise HTTPException(status_code=404, detail="Мебель не найдена")  # ИСПРАВЛЕНО
 
     item.name = item_data.name
     item.type_id = item_data.type_id
