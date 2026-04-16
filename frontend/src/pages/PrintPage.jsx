@@ -305,7 +305,7 @@ function PrintPage() {
                   <div
                     key={index}
                     className="bg-white rounded-xl shadow-md flex flex-col items-center justify-between p-2 border"
-                    style={{ height: "180px" }}
+                    style={{ height: "240px" }}
                   >
                     {/* Название */}
                     <div className="text-[11px] font-semibold text-center leading-tight">
@@ -316,11 +316,11 @@ function PrintPage() {
                     <img
                       src={qrImages[item.id]}
                       alt="qr"
-                      className="w-20 h-20"
+                      className="w-30 h-30"
                     />
 
                     {/* CODE как бейдж */}
-                    <div className="text-[10px] font-mono bg-gray-100 px-2 py-1 rounded-md">
+                    <div className="text-[18px] font-mono bg-gray-100 px-2 py-1 rounded-md">
                       {item.code}
                     </div>
                   </div>
