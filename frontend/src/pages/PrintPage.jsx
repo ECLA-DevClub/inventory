@@ -320,7 +320,7 @@ function PrintPage() {
                     />
 
                     {/* CODE как бейдж */}
-                    <div className="text-[18px] font-mono bg-gray-100 px-2 py-1 rounded-md">
+                    <div className="text-[12px] font-mono bg-gray-100 px-2 py-1 rounded-md">
                       {item.code}
                     </div>
                   </div>
