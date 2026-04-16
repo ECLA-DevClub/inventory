@@ -150,15 +150,15 @@ function PrintPage() {
 
       // Правильная сетка: 3 колонки, 6 строк = 18 этикеток на страницу
       const cols = 3;
-      const rows = 6;
+      const rows = 5;
 
       const marginX = 10;
       const marginY = 10;
 
       const cellWidth = 60;
-      const cellHeight = 45;
+      const cellHeight = 55;
 
-      const qrSize = 30;
+      const qrSize = 40;
 
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
