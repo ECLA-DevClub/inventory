@@ -13,8 +13,12 @@ database_url = os.getenv("DATABASE_URL")
 if database_url:
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
+
     SQLALCHEMY_DATABASE_URL = database_url
-    connect_args = {}
+
+    # 🔥 ВАЖНО для Supabase
+    connect_args = {"sslmode": "require"}
+
 else:
     db_user = os.getenv("DB_USER")
     db_password = os.getenv("DB_PASSWORD")
@@ -26,12 +30,17 @@ else:
         SQLALCHEMY_DATABASE_URL = (
             f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
         )
-        connect_args = {}
+        connect_args = {"sslmode": "require"}
     else:
         SQLALCHEMY_DATABASE_URL = f"sqlite:///{SQLITE_PATH}"
         connect_args = {"check_same_thread": False}
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True  # 🔥 чтобы не падало соединение
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
