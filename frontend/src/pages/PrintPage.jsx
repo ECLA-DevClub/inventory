@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { getBuildings, getRooms, getFurniture } from "../api";
 import "../index.css";
 
+// Базовый URL API (если нужно, можно импортировать из конфига)
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 function PrintPage() {
   const [buildings, setBuildings] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -12,6 +15,7 @@ function PrintPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [previewData, setPreviewData] = useState([]);
+  const [qrImages, setQrImages] = useState({});
 
   // Загрузка справочников при монтировании
   useEffect(() => {
@@ -45,6 +49,32 @@ function PrintPage() {
     }
   }, [selectedBuilding, rooms]);
 
+  // Функция для получения QR-кода с бэкенда
+  const fetchQRImage = async (furnitureId) => {
+    const qrUrl = `${API_BASE_URL}/furniture/${furnitureId}/qr`;
+    
+    try {
+      const response = await fetch(qrUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch QR code: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error("Error fetching QR:", error);
+      throw error;
+    }
+  };
+
   const loadPreview = async () => {
     if (!selectedBuilding || !selectedRoom) {
       setError("Выберите этаж и комнату");
@@ -62,6 +92,20 @@ function PrintPage() {
 
       const data = await getFurniture(filters);
       setPreviewData(data || []);
+      
+      // Загружаем QR-коды для всех предметов
+      const qrMap = {};
+      
+      for (const item of data) {
+        try {
+          const qr = await fetchQRImage(item.id);
+          qrMap[item.id] = qr;
+        } catch (e) {
+          console.error("QR load failed", item.id);
+        }
+      }
+      
+      setQrImages(qrMap);
     } catch (err) {
       console.error(err);
       setError("Ошибка загрузки данных");
@@ -116,17 +160,11 @@ function PrintPage() {
 
       const qrSize = 30;
 
-      // Динамически подключаем qrcode один раз
-      const QRCodeLib = await import("qrcode");
-      const QRCode = QRCodeLib.default;
-
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
 
-        // ✅ ИСПРАВЛЕНО: используем полный URL вместо ID
-        const qrData = `${window.location.origin}/furniture/${item.id}`;
-
-        const qrImage = await QRCode.toDataURL(qrData);
+        // Получаем QR-код с бэкенда
+        const qrImage = await fetchQRImage(item.id);
 
         const col = i % cols;
         const row = Math.floor(i / cols) % rows;
@@ -157,7 +195,7 @@ function PrintPage() {
           align: "center",
         });
 
-        // ✅ ИСПРАВЛЕНО: выводим code вместо ID
+        // Выводим code вместо ID
         pdf.text(item.code || "", x + cellWidth / 2, y + qrSize + 9, {
           maxWidth: cellWidth,
           align: "center",
@@ -274,9 +312,9 @@ function PrintPage() {
                       {item.name}
                     </div>
 
-                    {/* QR */}
+                    {/* QR - используем кэшированное изображение */}
                     <img
-                      src={`${window.location.origin}/furniture/${item.id}/qr`}
+                      src={qrImages[item.id]}
                       alt="qr"
                       className="w-20 h-20"
                     />
