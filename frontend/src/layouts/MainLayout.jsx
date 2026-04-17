@@ -201,8 +201,8 @@ function MainLayout() {
           </>
         )}
 
-        <aside className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:justify-between lg:p-4 lg:w-[280px] xl:w-[320px]">
-          <div className="glass-strong flex h-full flex-col justify-between rounded-[30px] border border-white/10 p-4 xl:p-6">
+        <aside className="hidden lg:flex lg:flex-col lg:justify-between lg:p-4 lg:w-[280px] xl:w-[320px]">
+          <div className="glass-strong flex h-auto flex-col justify-between rounded-[30px] border border-white/10 p-4 xl:p-6">
             <div>
               <div className="mb-6 flex items-start justify-between gap-3">
                 <div className="min-w-0">

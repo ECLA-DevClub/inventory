@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBuildings, getRooms, getFurniture } from "../api";
+import { getBuildings, getRooms, getFurniture, getFurnitureTypes } from "../api";
 import "../index.css";
 
 // Базовый URL API (если нужно, можно импортировать из конфига)
@@ -10,9 +10,11 @@ function PrintPage() {
   const { t } = useTranslation();
   const [buildings, setBuildings] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [types, setTypes] = useState([]);
   const [filteredRooms, setFilteredRooms] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("");
+  const [selectedType, setSelectedType] = useState("");
   const [furnitureList, setFurnitureList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,12 +28,14 @@ function PrintPage() {
 
   const loadReferences = async () => {
     try {
-      const [buildingsData, roomsData] = await Promise.all([
+      const [buildingsData, roomsData, typesData] = await Promise.all([
         getBuildings(),
         getRooms(),
+        getFurnitureTypes(),
       ]);
       setBuildings(buildingsData || []);
       setRooms(roomsData || []);
+      setTypes(typesData || []);
     } catch (err) {
       console.error("Ошибка загрузки справочников:", err);
       setError("Не удалось загрузить справочники");
@@ -92,6 +96,10 @@ function PrintPage() {
         room_id: Number(selectedRoom),
       };
 
+      if (selectedType) {
+        filters.type_id = Number(selectedType);
+      }
+
       const data = await getFurniture(filters);
       setPreviewData(data || []);
       
@@ -131,6 +139,10 @@ function PrintPage() {
         building_id: Number(selectedBuilding),
         room_id: Number(selectedRoom),
       };
+
+      if (selectedType) {
+        filters.type_id = Number(selectedType);
+      }
 
       const data = await getFurniture(filters);
 
@@ -274,6 +286,28 @@ function PrintPage() {
                 {filteredRooms.map((r) => (
                   <option key={r.id} value={r.id} className="text-black">
                     {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-white/60">
+                {t("print.type")}
+              </label>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full rounded-xl bg-white/10 p-3 outline-none backdrop-blur focus:ring-2 focus:ring-blue-500"
+                style={{ color: "white" }}
+              >
+                <option value="" className="text-black">
+                  {t("print.all_types")}
+                </option>
+
+                {types.map((type) => (
+                  <option key={type.id} value={type.id} className="text-black">
+                    {type.name}
                   </option>
                 ))}
               </select>
