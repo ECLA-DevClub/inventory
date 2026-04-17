@@ -69,7 +69,7 @@ function MainLayout() {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#020817] text-white">
+    <div className="relative min-h-screen bg-[#020817] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 left-[-60px] h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute right-[-80px] top-1/3 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl" />
