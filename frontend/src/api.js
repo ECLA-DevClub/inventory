@@ -272,17 +272,14 @@ export function getFurnitureQrUrl(id) {
 
 /* ---------------- FURNITURE TYPES ---------------- */
 
-export async function getFurnitureTypes(token = "") {
-  const res = await fetch(`${API_URL}/furniture-types`, {
-    headers: buildAuthHeaders(token),
-  });
+
 
   if (!res.ok) {
     await parseError(res, "Ошибка загрузки типов мебели");
   }
 
   return res.json();
-}
+
 
 /* ---------------- REFERENCES ---------------- */
 
