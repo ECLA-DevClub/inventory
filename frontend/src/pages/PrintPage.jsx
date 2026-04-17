@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBuildings, getRooms, getFurniture, getFurnitureTypes } from "../api";
+import { getBuildings, getRooms, getFurniture, getTypes, API_URL } from "../api";
 import "../index.css";
-
-// Базовый URL API (если нужно, можно импортировать из конфига)
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function PrintPage() {
   const { t } = useTranslation();
@@ -15,7 +12,6 @@ function PrintPage() {
   const [selectedBuilding, setSelectedBuilding] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("");
   const [selectedType, setSelectedType] = useState("");
-  const [furnitureList, setFurnitureList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [previewData, setPreviewData] = useState([]);
@@ -28,12 +24,12 @@ function PrintPage() {
 
   const loadReferences = async () => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("access_token") || "";
       
       const [buildingsData, roomsData, typesData] = await Promise.all([
         getBuildings(token),
         getRooms(token),
-        getFurnitureTypes(token),
+        getTypes(token),
       ]);
       setBuildings(buildingsData || []);
       setRooms(roomsData || []);
@@ -59,13 +55,13 @@ function PrintPage() {
 
   // Функция для получения QR-кода с бэкенда
   const fetchQRImage = async (furnitureId) => {
-    const qrUrl = `${API_BASE_URL}/furniture/${furnitureId}/qr`;
-    const token = localStorage.getItem("access_token");
+    const qrUrl = `${API_URL}/furniture/${furnitureId}/qr`;
+    const token = localStorage.getItem("access_token") || "";
     
     try {
       const response = await fetch(qrUrl, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: token ? `Bearer ${token}` : "",
         },
       });
       if (!response.ok) {
@@ -98,7 +94,7 @@ function PrintPage() {
     setError("");
 
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("access_token") || "";
       
       const filters = {
         building_id: Number(selectedBuilding),
@@ -112,19 +108,19 @@ function PrintPage() {
       const data = await getFurniture(filters, token);
       setPreviewData(data || []);
       
-      // Загружаем QR-коды для всех предметов
-      const qrMap = {};
+      // Загружаем QR-коды для всех предметов параллельно
+      const qrEntries = await Promise.all(
+        data.map(async (item) => {
+          try {
+            const qr = await fetchQRImage(item.id);
+            return [item.id, qr];
+          } catch {
+            return [item.id, null];
+          }
+        })
+      );
       
-      for (const item of data) {
-        try {
-          const qr = await fetchQRImage(item.id);
-          qrMap[item.id] = qr;
-        } catch (e) {
-          console.error("QR load failed", item.id);
-        }
-      }
-      
-      setQrImages(qrMap);
+      setQrImages(Object.fromEntries(qrEntries));
     } catch (err) {
       console.error(err);
       setError(t("print.load_error"));
@@ -144,7 +140,7 @@ function PrintPage() {
     setError("");
 
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("access_token") || "";
       
       const filters = {
         building_id: Number(selectedBuilding),
@@ -348,9 +344,9 @@ function PrintPage() {
               <h3 className="mb-4 font-bold text-lg">{t("print.preview_title")}</h3>
 
               <div className="grid grid-cols-3 gap-4">
-                {previewData.map((item, index) => (
+                {previewData.map((item) => (
                   <div
-                    key={index}
+                    key={item.id}
                     className="bg-white rounded-xl shadow-md flex flex-col items-center justify-between p-3 border"
                     style={{ height: "240px" }}
                   >
