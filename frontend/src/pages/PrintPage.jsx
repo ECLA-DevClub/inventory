@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getBuildings, getRooms, getFurniture, getTypes, API_URL } from "../api";
 import "../index.css";
-import "../fonts/Roboto-Regular.js";
+import { loadRoboto } from "../fonts/Roboto-Regular";
 
 function PrintPage() {
   const { t } = useTranslation();
