@@ -3,6 +3,15 @@ import { useTranslation } from "react-i18next";
 import { getBuildings, getRooms, getFurniture, getTypes, API_URL } from "../api";
 import "../index.css";
 
+function fixText(text) {
+  if (!text) return "";
+  try {
+    return decodeURIComponent(escape(text));
+  } catch {
+    return text;
+  }
+}
+
 function PrintPage() {
   const { t } = useTranslation();
   const [buildings, setBuildings] = useState([]);
@@ -169,6 +178,16 @@ function PrintPage() {
         format: "a4",
       });
 
+      // Загружаем и подключаем шрифт Roboto для поддержки кириллицы
+      try {
+        const font = await fetch("/fonts/Roboto-Regular.ttf").then(res => res.arrayBuffer());
+        pdf.addFileToVFS("Roboto-Regular.ttf", font);
+        pdf.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+        pdf.setFont("Roboto");
+      } catch (fontError) {
+        console.warn("Не удалось загрузить шрифт Roboto, используется стандартный:", fontError);
+      }
+
       // Правильная сетка: 3 колонки, 6 строк = 18 этикеток на страницу
       const cols = 3;
       const rows = 5;
@@ -193,6 +212,12 @@ function PrintPage() {
         // Добавляем новую страницу после заполнения предыдущей
         if (i > 0 && i % (cols * rows) === 0) {
           pdf.addPage();
+          // На новой странице снова устанавливаем шрифт
+          try {
+            pdf.setFont("Roboto");
+          } catch {
+            // Игнорируем ошибку, если шрифт не загружен
+          }
         }
 
         const x = marginX + col * cellWidth;
@@ -210,14 +235,14 @@ function PrintPage() {
 
         pdf.setFontSize(7);
 
-        // Название (центрировано)
-        pdf.text(item.name || "", x + cellWidth / 2, y + qrSize + 5, {
+        // Название (центрировано) - с фиксом кириллицы
+        pdf.text(fixText(item.name), x + cellWidth / 2, y + qrSize + 5, {
           maxWidth: cellWidth,
           align: "center",
         });
 
-        // Выводим code вместо ID
-        pdf.text(item.code || "", x + cellWidth / 2, y + qrSize + 9, {
+        // Выводим code - с фиксом кириллицы
+        pdf.text(fixText(item.code), x + cellWidth / 2, y + qrSize + 9, {
           maxWidth: cellWidth,
           align: "center",
         });

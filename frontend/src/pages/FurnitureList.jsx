@@ -823,4 +823,4 @@ function FurnitureList() {
   );
 }
 
-export default FurnitureList;
+export default FurnitureList; 
