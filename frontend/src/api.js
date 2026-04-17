@@ -33,6 +33,12 @@ function normalizeErrorDetail(detail) {
 }
 
 async function parseError(res, fallbackMessage) {
+  if (res.status === 401) {
+    localStorage.removeItem("access_token");
+    window.location.href = "/login";
+    return;
+  }
+
   const err = await res.json().catch(() => ({}));
   const normalized =
     normalizeErrorDetail(err?.detail) || err?.message || fallbackMessage;
@@ -150,9 +156,7 @@ export async function createFurniture(data, token) {
 
   const res = await fetch(`${API_URL}/furniture/`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: buildAuthHeaders(token),
     body: formData,
   });
 
