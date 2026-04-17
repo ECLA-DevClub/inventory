@@ -28,10 +28,12 @@ function PrintPage() {
 
   const loadReferences = async () => {
     try {
+      const token = localStorage.getItem("access_token");
+      
       const [buildingsData, roomsData, typesData] = await Promise.all([
-        getBuildings(),
-        getRooms(),
-        getFurnitureTypes(),
+        getBuildings(token),
+        getRooms(token),
+        getFurnitureTypes(token),
       ]);
       setBuildings(buildingsData || []);
       setRooms(roomsData || []);
@@ -58,9 +60,14 @@ function PrintPage() {
   // Функция для получения QR-кода с бэкенда
   const fetchQRImage = async (furnitureId) => {
     const qrUrl = `${API_BASE_URL}/furniture/${furnitureId}/qr`;
+    const token = localStorage.getItem("access_token");
     
     try {
-      const response = await fetch(qrUrl);
+      const response = await fetch(qrUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch QR code: ${response.status}`);
       }
@@ -91,6 +98,8 @@ function PrintPage() {
     setError("");
 
     try {
+      const token = localStorage.getItem("access_token");
+      
       const filters = {
         building_id: Number(selectedBuilding),
         room_id: Number(selectedRoom),
@@ -100,7 +109,7 @@ function PrintPage() {
         filters.type_id = Number(selectedType);
       }
 
-      const data = await getFurniture(filters);
+      const data = await getFurniture(filters, token);
       setPreviewData(data || []);
       
       // Загружаем QR-коды для всех предметов
@@ -135,6 +144,8 @@ function PrintPage() {
     setError("");
 
     try {
+      const token = localStorage.getItem("access_token");
+      
       const filters = {
         building_id: Number(selectedBuilding),
         room_id: Number(selectedRoom),
@@ -144,7 +155,7 @@ function PrintPage() {
         filters.type_id = Number(selectedType);
       }
 
-      const data = await getFurniture(filters);
+      const data = await getFurniture(filters, token);
 
       if (!data || data.length === 0) {
         setError(t("print.no_furniture"));
