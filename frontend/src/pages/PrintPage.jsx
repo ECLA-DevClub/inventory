@@ -366,7 +366,7 @@ function PrintPage() {
                     <img
                       src={qrImages[item.id]}
                       alt="qr"
-                      className="w-28 h-28"
+                      className="w-24 h-24"
                     />
 
                     {/* CODE как бейдж */}
