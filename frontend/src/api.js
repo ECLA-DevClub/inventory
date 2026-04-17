@@ -1,8 +1,3 @@
-export const getFurnitureTypes = async () => {
-  const res = await fetch(`${API_BASE_URL}/furniture-types`);
-  return res.json();
-};
-
 const API_URL =
   import.meta.env.VITE_API_URL || "https://inventory-9ko1.onrender.com";
 
@@ -272,14 +267,17 @@ export function getFurnitureQrUrl(id) {
 
 /* ---------------- FURNITURE TYPES ---------------- */
 
-
+export const getFurnitureTypes = async (token = "") => {
+  const res = await fetch(`${API_URL}/furniture-types`, {
+    headers: buildAuthHeaders(token),
+  });
 
   if (!res.ok) {
     await parseError(res, "Ошибка загрузки типов мебели");
   }
 
   return res.json();
-
+};
 
 /* ---------------- REFERENCES ---------------- */
 
