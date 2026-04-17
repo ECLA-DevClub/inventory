@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getBuildings, getRooms, getFurniture, getTypes, API_URL } from "../api";
 import "../index.css";
+import "../fonts/Roboto-Regular.js";
 
 function PrintPage() {
   const { t } = useTranslation();
@@ -169,28 +170,8 @@ function PrintPage() {
         format: "a4",
       });
 
-      // Загружаем и подключаем шрифт Roboto для поддержки кириллицы
-      try {
-        const font = await fetch("/fonts/Roboto-Regular.ttf")
-          .then(res => res.arrayBuffer())
-          .then(buffer => {
-            let binary = "";
-            const bytes = new Uint8Array(buffer);
-            const len = bytes.byteLength;
-
-            for (let i = 0; i < len; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-
-            return btoa(binary);
-          });
-
-        pdf.addFileToVFS("Roboto-Regular.ttf", font);
-        pdf.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-        pdf.setFont("Roboto", "normal");
-      } catch (fontError) {
-        console.warn("Не удалось загрузить шрифт Roboto, используется стандартный:", fontError);
-      }
+      // Подключаем шрифт Roboto для поддержки кириллицы
+      pdf.setFont("Roboto-Regular", "normal");
 
       // Правильная сетка: 3 колонки, 6 строк = 18 этикеток на страницу
       const cols = 3;
@@ -217,11 +198,7 @@ function PrintPage() {
         if (i > 0 && i % (cols * rows) === 0) {
           pdf.addPage();
           // На новой странице снова устанавливаем шрифт
-          try {
-            pdf.setFont("Roboto", "normal");
-          } catch {
-            // Игнорируем ошибку, если шрифт не загружен
-          }
+          pdf.setFont("Roboto-Regular", "normal");
         }
 
         const x = marginX + col * cellWidth;
