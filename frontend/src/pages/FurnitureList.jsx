@@ -78,6 +78,7 @@ function FurnitureList() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [listLoading, setListLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const holdTimer = useRef(null);
 
@@ -158,6 +159,7 @@ function FurnitureList() {
       });
 
       setFurniture(mapped);
+      setSelectedIds([]);
     } catch (err) {
       console.error("Ошибка загрузки мебели:", err);
     } finally {
@@ -208,12 +210,34 @@ function FurnitureList() {
       await deleteFurniture(deleteTarget.id, token);
 
       setFurniture((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
       console.error("Ошибка удаления мебели:", err);
       alert(err.message || t("Delete error"));
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!token) return;
+
+    if (!confirm("Удалить выбранные?")) return;
+
+    try {
+      await Promise.all(
+        selectedIds.map((id) => deleteFurniture(id, token))
+      );
+
+      setFurniture((prev) =>
+        prev.filter((item) => !selectedIds.includes(item.id))
+      );
+
+      setSelectedIds([]);
+    } catch (err) {
+      console.error("Bulk delete error:", err);
+      alert("Ошибка удаления");
     }
   };
 
@@ -389,6 +413,19 @@ function FurnitureList() {
         <table className="w-full text-sm">
           <thead className="border-b border-white/10">
             <tr className="text-white/70">
+              <th className="w-[40px] px-2 py-4 text-left font-medium">
+                <input
+                  type="checkbox"
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedIds(filtered.map((f) => f.id));
+                    } else {
+                      setSelectedIds([]);
+                    }
+                  }}
+                  checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                />
+              </th>
               <th className="w-[72px] px-4 py-4 text-left font-medium xl:w-[88px]"></th>
               <th className="w-[130px] px-4 py-4 text-left font-medium xl:w-[150px]">Inv #</th>
               <th className="px-4 py-4 text-left font-medium">{t("Name")}</th>
@@ -410,6 +447,24 @@ function FurnitureList() {
                 onClick={() => handleOpenDetail(f.id)}
                 className="cursor-pointer border-b border-white/5 transition hover:bg-white/10"
               >
+                <td
+                  className="px-2 py-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(f.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds((prev) => [...prev, f.id]);
+                      } else {
+                        setSelectedIds((prev) =>
+                          prev.filter((id) => id !== f.id)
+                        );
+                      }
+                    }}
+                  />
+                </td>
                 <td
                   className="px-4 py-3"
                   onClick={(e) => e.stopPropagation()}
@@ -508,7 +563,7 @@ function FurnitureList() {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={canManageAssets ? 9 : 8}
+                  colSpan={canManageAssets ? 10 : 9}
                   className="px-6 py-10 text-center text-white/55"
                 >
                   {t("No results")}
@@ -637,6 +692,18 @@ function FurnitureList() {
           </div>
         )}
       </div>
+
+      {/* ── BULK DELETE BUTTON ── */}
+      {selectedIds.length > 0 && canDeleteAssets && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={handleBulkDelete}
+            className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full shadow-lg transition font-semibold"
+          >
+            Удалить ({selectedIds.length})
+          </button>
+        </div>
+      )}
 
       {/* ── PHOTO MODAL (через Portal — всегда по центру экрана) ── */}
       {modalPhoto && createPortal(
