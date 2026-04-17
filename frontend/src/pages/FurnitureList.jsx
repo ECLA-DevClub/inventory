@@ -79,6 +79,7 @@ function FurnitureList() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const holdTimer = useRef(null);
 
@@ -220,27 +221,6 @@ function FurnitureList() {
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (!token) return;
-
-    if (!confirm("Удалить выбранные?")) return;
-
-    try {
-      await Promise.all(
-        selectedIds.map((id) => deleteFurniture(id, token))
-      );
-
-      setFurniture((prev) =>
-        prev.filter((item) => !selectedIds.includes(item.id))
-      );
-
-      setSelectedIds([]);
-    } catch (err) {
-      console.error("Bulk delete error:", err);
-      alert("Ошибка удаления");
-    }
-  };
-
   const resetFilters = () => {
     setSearch("");
     setSelectedTypeId("");
@@ -293,6 +273,22 @@ function FurnitureList() {
           placeholder={t("Search assets placeholder")}
           className="w-full rounded-[18px] border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none backdrop-blur-xl transition focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20 sm:rounded-[22px] sm:px-4 sm:py-3 sm:text-base"
         />
+      </div>
+
+      {/* ── BULK DELETE BAR ── */}
+      <div className="mt-4 flex items-center justify-between">
+        <div className="text-sm text-white/60">
+          Выбрано: {selectedIds.length}
+        </div>
+
+        {selectedIds.length > 0 && canDeleteAssets && (
+          <button
+            onClick={() => setShowBulkDelete(true)}
+            className="rounded-xl bg-red-500/90 px-4 py-2 text-sm text-white hover:bg-red-500 transition"
+          >
+            Удалить ({selectedIds.length})
+          </button>
+        )}
       </div>
 
       <div className="mt-3 rounded-[18px] border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl sm:mt-4 sm:rounded-[22px] sm:p-3">
@@ -437,7 +433,7 @@ function FurnitureList() {
               {canManageAssets && (
                 <th className="px-4 py-4 text-left font-medium">{t("Actions")}</th>
               )}
-            </tr>
+             </tr>
           </thead>
 
           <tbody>
@@ -693,18 +689,6 @@ function FurnitureList() {
         )}
       </div>
 
-      {/* ── BULK DELETE BUTTON ── */}
-      {selectedIds.length > 0 && canDeleteAssets && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <button
-            onClick={handleBulkDelete}
-            className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full shadow-lg transition font-semibold"
-          >
-            Удалить ({selectedIds.length})
-          </button>
-        </div>
-      )}
-
       {/* ── PHOTO MODAL (через Portal — всегда по центру экрана) ── */}
       {modalPhoto && createPortal(
         <div
@@ -775,6 +759,60 @@ function FurnitureList() {
                 className="rounded-2xl border border-red-400/20 bg-red-500/15 px-4 py-2.5 text-sm text-red-100 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {deleteLoading ? t("Deleting") : t("Delete")}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── BULK DELETE MODAL ── */}
+      {showBulkDelete && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4"
+          onClick={() => setShowBulkDelete(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f1729]/95 p-6 backdrop-blur-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-white">
+              Удалить выбранные?
+            </h3>
+
+            <p className="mt-3 text-sm text-white/70">
+              Вы действительно хотите удалить {selectedIds.length} элементов?
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowBulkDelete(false)}
+                className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 transition"
+              >
+                Отмена
+              </button>
+
+              <button
+                onClick={async () => {
+                  try {
+                    await Promise.all(
+                      selectedIds.map((id) => deleteFurniture(id, token))
+                    );
+
+                    setFurniture((prev) =>
+                      prev.filter((item) => !selectedIds.includes(item.id))
+                    );
+
+                    setSelectedIds([]);
+                    setShowBulkDelete(false);
+                  } catch (err) {
+                    console.error("Bulk delete error:", err);
+                    alert("Ошибка удаления");
+                  }
+                }}
+                className="rounded-xl bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600 transition"
+              >
+                Удалить
               </button>
             </div>
           </div>
