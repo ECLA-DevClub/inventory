@@ -171,7 +171,8 @@ function PrintPage() {
       });
 
       // Подключаем шрифт Roboto для поддержки кириллицы
-      pdf.setFont("Roboto-Regular", "normal");
+      loadRoboto(pdf);
+      pdf.setFont("Roboto");
 
       // Правильная сетка: 3 колонки, 6 строк = 18 этикеток на страницу
       const cols = 3;
@@ -198,7 +199,7 @@ function PrintPage() {
         if (i > 0 && i % (cols * rows) === 0) {
           pdf.addPage();
           // На новой странице снова устанавливаем шрифт
-          pdf.setFont("Roboto-Regular", "normal");
+          pdf.setFont("Roboto");
         }
 
         const x = marginX + col * cellWidth;
