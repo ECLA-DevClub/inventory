@@ -26,6 +26,7 @@ class FurnitureType(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
+    organization_id = Column(Integer, nullable=False, default=1)  # 👈 ДОБАВЛЕНО
 
     furniture = relationship("Furniture", back_populates="furniture_type")
 
@@ -92,11 +93,17 @@ class Furniture(Base):
         server_default=func.now(),
     )
 
+    # Основное поле для типа - String, а не ForeignKey
+    # Это позволяет хранить как ID из справочника, так и кастомное значение
+    type = Column(String, nullable=False, default="")  # 👈 ГЛАВНОЕ ИЗМЕНЕНИЕ
+    
+    # Оставляем type_id для обратной совместимости, но делаем опциональным
     type_id = Column(
         Integer,
         ForeignKey("furniture_type.id", ondelete="SET NULL"),
         nullable=True,
     )
+    
     building_id = Column(
         Integer,
         ForeignKey("building.id", ondelete="SET NULL"),
@@ -113,6 +120,7 @@ class Furniture(Base):
         nullable=True,
     )
 
+    # Relationships
     furniture_type = relationship("FurnitureType", back_populates="furniture")
     building = relationship("Building", back_populates="furniture")
     room = relationship("Room", back_populates="furniture")

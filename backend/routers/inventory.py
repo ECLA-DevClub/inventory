@@ -29,7 +29,7 @@ router = APIRouter(
 )
 
 # =========================
-# РОУТЕР БЕЗ АВТОРИЗАЦИИ (только для photo-proxy)
+# РОУТЕР БЕЗ АВТОРИЗАЦИИ (только для photo-proxy и qr)
 # =========================
 public_router = APIRouter(
     prefix="/furniture",
@@ -171,8 +171,9 @@ def furniture_to_response(item: models.Furniture):
         "code": item.code,
         "inv_number": item.inv_number,
         "name": item.name,
-        "type_id": item.type_id,
-        "type_name": item.furniture_type.name if item.furniture_type else "",
+        "type": item.type,  # 👈 Теперь возвращаем строковое поле type
+        "type_id": item.type_id,  # Для обратной совместимости
+        "type_name": item.furniture_type.name if item.furniture_type else None,
         "building_id": item.building_id,
         "building_name": item.building.name if item.building else "",
         "room_id": item.room_id,
@@ -260,6 +261,7 @@ def get_photo_via_proxy(object_key: str):
 @router.get("/", response_model=List[schemas.FurnitureResponse])
 def get_all_furniture(
     search: Optional[str] = Query(default=None),
+    type: Optional[str] = Query(default=None),  # 👈 Теперь фильтр по строке
     type_id: Optional[int] = Query(default=None),
     building_id: Optional[int] = Query(default=None),
     room_id: Optional[int] = Query(default=None),
@@ -268,6 +270,7 @@ def get_all_furniture(
     purchase_date_from: Optional[date] = Query(default=None),
     purchase_date_to: Optional[date] = Query(default=None),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("admin", "manager", "viewer")),
 ):
     query = (
         db.query(models.Furniture)
@@ -278,6 +281,10 @@ def get_all_furniture(
             joinedload(models.Furniture.condition),
         )
     )
+
+    # 👈 Фильтр по строковому полю type
+    if type is not None:
+        query = query.filter(models.Furniture.type == type)
 
     if type_id is not None:
         query = query.filter(models.Furniture.type_id == type_id)
@@ -314,6 +321,7 @@ def get_all_furniture(
                     or_(
                         models.Furniture.inv_number.ilike(f"%{search_value}%"),
                         models.Furniture.name.ilike(f"%{search_value}%"),
+                        models.Furniture.type.ilike(f"%{search_value}%"),  # 👈 Поиск по type
                         models.Furniture.model.ilike(f"%{search_value}%"),
                         models.Furniture.manufacturer.ilike(f"%{search_value}%"),
                         models.FurnitureType.name.ilike(f"%{search_value}%"),
@@ -334,7 +342,11 @@ def get_all_furniture(
 # =========================
 
 @router.get("/{furniture_id}", response_model=schemas.FurnitureResponse)
-def get_furniture_by_id(furniture_id: int, db: Session = Depends(get_db)):
+def get_furniture_by_id(
+    furniture_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("admin", "manager", "viewer")),
+):
     item = (
         db.query(models.Furniture)
         .options(
@@ -354,13 +366,13 @@ def get_furniture_by_id(furniture_id: int, db: Session = Depends(get_db)):
 
 
 # =========================
-# CREATE (С ИСПОЛЬЗОВАНИЕМ FORM ПАРАМЕТРОВ)
+# CREATE (С ПОДДЕРЖКОЙ КАСТОМНОГО ТИПА И АВТО-СОЗДАНИЕМ ТИПА)
 # =========================
 
 @router.post("/", response_model=List[schemas.FurnitureResponse])
 async def create_furniture(
     name: str = Form(...),
-    type_id: int = Form(...),
+    type: str = Form(...),  # 👈 Теперь принимаем строку (может быть ID или текст)
     building_id: int = Form(...),
     room_id: int = Form(...),
     quantity: int = Form(1),
@@ -377,6 +389,47 @@ async def create_furniture(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_roles("admin", "manager")),
 ):
+    # 👈 Обработка типа: проверяем, является ли type числом (ID из справочника)
+    type_id = None
+    type_value = type
+    
+    if type.isdigit():
+        # Это ID из справочника furniture_type
+        type_id = int(type)
+        # Получаем название типа из справочника
+        furniture_type = db.query(models.FurnitureType).filter(
+            models.FurnitureType.id == type_id,
+            models.FurnitureType.organization_id == current_user.organization_id
+        ).first()
+        
+        if furniture_type:
+            type_value = furniture_type.name
+        else:
+            type_value = type  # Если не найден, используем как есть
+    else:
+        # Это кастомный тип (строка)
+        type_id = None
+        type_value = type
+        
+        # 👈 СОХРАНЯЕМ ТИП, ЕСЛИ ЕГО НЕТ
+        existing_type = db.query(models.FurnitureType).filter(
+            models.FurnitureType.name == type,
+            models.FurnitureType.organization_id == current_user.organization_id
+        ).first()
+        
+        if not existing_type:
+            # Создаем новый тип в справочнике
+            new_type = models.FurnitureType(
+                name=type,
+                organization_id=current_user.organization_id
+            )
+            db.add(new_type)
+            db.flush()  # Получаем ID без коммита
+            type_id = new_type.id
+            # type_value уже установлен
+        else:
+            type_id = existing_type.id
+    
     # Получаем последний инвентарный номер
     last_invs = db.query(models.Furniture.inv_number).filter(
         models.Furniture.inv_number.isnot(None)
@@ -408,11 +461,11 @@ async def create_furniture(
         
         # ===== Генерация code =====
         
-        # ORG (пока ставим 1, потом можно автоматизировать)
-        org_id = 1
+        # ORG (используем organization_id пользователя)
+        org_id = current_user.organization_id
         
-        # TYPE
-        type_code = type_id
+        # TYPE (используем type_id если есть, иначе 0 для кастомных)
+        type_code = type_id if type_id else 0
         
         # FLOOR (берём из названия здания, если число)
         floor = 1
@@ -434,11 +487,13 @@ async def create_furniture(
         # финальный код
         code = f"{org_id}-{type_code}-{floor}-{room_code}-{resp}-{inv_short}"
         
+        # 👈 СОЗДАНИЕ ОБЪЕКТА С НОВЫМ ПОЛЕМ type
         db_item = models.Furniture(
             code=code,
             inv_number=inv_number,
             name=name,
-            type_id=type_id,
+            type=type_value,  # 👈 Сохраняем строковое значение
+            type_id=type_id,  # Сохраняем ID для связи со справочником
             building_id=building_id,
             room_id=room_id,
             condition_id=condition_id,
@@ -454,8 +509,7 @@ async def create_furniture(
         )
         
         db.add(db_item)
-        db.commit()
-        db.refresh(db_item)
+        db.flush()  # Получаем ID без полного коммита
         
         add_history_record(
             db=db,
@@ -464,7 +518,7 @@ async def create_furniture(
             action="create",
             change_type="create",
             reason=None,
-            description=f"Создана мебель {db_item.name} (инв. номер: {inv_number})",
+            description=f"Создана мебель {db_item.name} (инв. номер: {inv_number}, тип: {type_value})",
         )
         
         # Загружаем связанные данные для ответа
@@ -482,6 +536,7 @@ async def create_furniture(
         
         created_items.append(furniture_to_response(db_item))
     
+    # Финальный коммит всех изменений
     db.commit()
     
     return created_items
@@ -501,10 +556,45 @@ def update_furniture(
     item = db.query(models.Furniture).filter(models.Furniture.id == furniture_id).first()
 
     if not item:
-        raise HTTPException(status_code=404, detail="Мебель не найдена")  # ИСПРАВЛЕНО
+        raise HTTPException(status_code=404, detail="Мебель не найдена")
 
     item.name = item_data.name
-    item.type_id = item_data.type_id
+    
+    # 👈 Обработка типа при обновлении
+    if item_data.type:
+        if item_data.type.isdigit():
+            # Это ID
+            item.type_id = int(item_data.type)
+            furniture_type = db.query(models.FurnitureType).filter(
+                models.FurnitureType.id == item.type_id,
+                models.FurnitureType.organization_id == current_user.organization_id
+            ).first()
+            if furniture_type:
+                item.type = furniture_type.name
+            else:
+                item.type = item_data.type
+        else:
+            # Это кастомный тип (строка)
+            item.type = item_data.type
+            
+            # Проверяем, существует ли уже такой тип в справочнике
+            existing_type = db.query(models.FurnitureType).filter(
+                models.FurnitureType.name == item_data.type,
+                models.FurnitureType.organization_id == current_user.organization_id
+            ).first()
+            
+            if existing_type:
+                item.type_id = existing_type.id
+            else:
+                # Создаем новый тип
+                new_type = models.FurnitureType(
+                    name=item_data.type,
+                    organization_id=current_user.organization_id
+                )
+                db.add(new_type)
+                db.flush()
+                item.type_id = new_type.id
+    
     item.building_id = item_data.building_id
     item.room_id = item_data.room_id
     item.condition_id = item_data.condition_id
@@ -664,7 +754,11 @@ def mark_as_inspected(
 # =========================
 
 @router.get("/history/{furniture_id}", response_model=List[schemas.FurnitureHistoryResponse])
-def get_furniture_history(furniture_id: int, db: Session = Depends(get_db)):
+def get_furniture_history(
+    furniture_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("admin", "manager", "viewer")),
+):
     history = (
         db.query(models.FurnitureHistory)
         .filter(models.FurnitureHistory.furniture_id == furniture_id)
