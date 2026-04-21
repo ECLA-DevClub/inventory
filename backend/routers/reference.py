@@ -20,35 +20,20 @@ router = APIRouter(
 # --- ТИПЫ МЕБЕЛИ ---
 
 @router.get("/types", response_model=List[schemas.FurnitureTypeResponse])
-def get_types(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.require_roles("admin", "manager", "viewer"))
-):
-    # 👈 Фильтруем по organization_id текущего пользователя
-    return db.query(models.FurnitureType).filter(
-        models.FurnitureType.organization_id == current_user.organization_id
-    ).all()
+def get_types(db: Session = Depends(get_db)):
+    return db.query(models.FurnitureType).all()
 
 @router.post("/types", response_model=schemas.FurnitureTypeResponse)
 def create_type(
-    item: schemas.FurnitureTypeCreate,
+    item: schemas.FurnitureTypeCreate, # Используем схему для чистого JSON
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.require_roles("admin"))
+    current_user: models.User = Depends(auth.require_roles("admin")) # Только админ
 ):
-    # Проверяем существование типа в рамках организации
-    exists = db.query(models.FurnitureType).filter(
-        models.FurnitureType.name == item.name,
-        models.FurnitureType.organization_id == current_user.organization_id
-    ).first()
-    
+    exists = db.query(models.FurnitureType).filter(models.FurnitureType.name == item.name).first()
     if exists:
-        raise HTTPException(status_code=400, detail="Этот тип уже существует в вашей организации")
+        raise HTTPException(status_code=400, detail="Этот тип уже существует")
 
-    # Создаем тип с organization_id текущего пользователя
-    obj = models.FurnitureType(
-        name=item.name,
-        organization_id=current_user.organization_id
-    )
+    obj = models.FurnitureType(name=item.name)
     db.add(obj)
     db.commit()
     db.refresh(obj)
@@ -64,7 +49,7 @@ def get_buildings(db: Session = Depends(get_db)):
 def create_building(
     item: schemas.BuildingCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.require_roles("admin"))
+    current_user: models.User = Depends(auth.require_roles("admin")) # Только админ
 ):
     exists = db.query(models.Building).filter(models.Building.name == item.name).first()
     if exists:
@@ -86,7 +71,7 @@ def get_rooms(db: Session = Depends(get_db)):
 def create_room(
     item: schemas.RoomCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.require_roles("admin", "manager"))
+    current_user: models.User = Depends(auth.require_roles("admin", "manager")) # Админ и менеджер
 ):
     building = db.query(models.Building).filter(models.Building.id == item.building_id).first()
     if not building:
@@ -108,7 +93,7 @@ def get_conditions(db: Session = Depends(get_db)):
 def create_condition(
     item: schemas.ConditionCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.require_roles("admin"))
+    current_user: models.User = Depends(auth.require_roles("admin")) # Только админ
 ):
     exists = db.query(models.Condition).filter(models.Condition.name == item.name).first()
     if exists:

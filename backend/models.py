@@ -21,16 +21,6 @@ class User(Base):
     role = Column(String, default="viewer", nullable=False)
 
 
-class FurnitureType(Base):
-    __tablename__ = "furniture_type"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, nullable=False)
-    organization_id = Column(Integer, nullable=False, default=1)  # 👈 ДОБАВЛЕНО
-
-    furniture = relationship("Furniture", back_populates="furniture_type")
-
-
 class Building(Base):
     __tablename__ = "building"
 
@@ -93,16 +83,8 @@ class Furniture(Base):
         server_default=func.now(),
     )
 
-    # Основное поле для типа - String, а не ForeignKey
-    # Это позволяет хранить как ID из справочника, так и кастомное значение
+    # Только строковое поле для типа - поддержка любых значений
     type = Column(String, nullable=False, default="")  # 👈 ГЛАВНОЕ ИЗМЕНЕНИЕ
-    
-    # Оставляем type_id для обратной совместимости, но делаем опциональным
-    type_id = Column(
-        Integer,
-        ForeignKey("furniture_type.id", ondelete="SET NULL"),
-        nullable=True,
-    )
     
     building_id = Column(
         Integer,
@@ -121,7 +103,6 @@ class Furniture(Base):
     )
 
     # Relationships
-    furniture_type = relationship("FurnitureType", back_populates="furniture")
     building = relationship("Building", back_populates="furniture")
     room = relationship("Room", back_populates="furniture")
     condition = relationship("Condition", back_populates="furniture")

@@ -20,10 +20,6 @@ function FurnitureCreate() {
   const [buildingsList, setBuildingsList] = useState([]);
   const [roomsList, setRoomsList] = useState([]);
   const [conditionsList, setConditionsList] = useState([]);
-  
-  // Для кастомного типа "Другой"
-  const [selectedType, setSelectedType] = useState("");
-  const [customType, setCustomType] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -133,8 +129,6 @@ function FurnitureCreate() {
           room_id: firstRoomForBuilding,
           condition_id: firstConditionId,
         }));
-        
-        setSelectedType(firstTypeId);
       } catch (err) {
         console.error(err);
         setError("Не удалось загрузить справочники");
@@ -246,17 +240,6 @@ function FurnitureCreate() {
       return;
     }
 
-    if (name === "type_select") {
-      setSelectedType(value);
-      if (value !== "Другой") {
-        setFormData((prev) => ({ ...prev, type_id: Number(value) }));
-        setCustomType("");
-      } else {
-        setFormData((prev) => ({ ...prev, type_id: "" }));
-      }
-      return;
-    }
-
     setFormData((prev) => ({
       ...prev,
       [name]: name.endsWith("_id") && value !== "" ? Number(value) : value,
@@ -299,15 +282,7 @@ function FurnitureCreate() {
       errors.name = "Введите название";
     }
     
-    // Проверка для типа с учетом "Другой"
-    if (selectedType === "Другой") {
-      if (!customType || !customType.trim()) {
-        errors.type_id = "Введите название типа мебели";
-      }
-    } else if (!formData.type_id) {
-      errors.type_id = "Выберите тип";
-    }
-    
+    if (!formData.type_id) errors.type_id = "Выберите тип";
     if (!formData.building_id) errors.building_id = "Выберите этаж";
     if (!formData.room_id) errors.room_id = "Выберите комнату";
 
@@ -386,35 +361,8 @@ function FurnitureCreate() {
       return;
     }
 
-    // Определяем финальный тип для отправки
-    let finalTypeId = formData.type_id;
-    if (selectedType === "Другой") {
-      // Здесь нужно создать новый тип на бэкенде или отправить как строку
-      // В зависимости от вашей API, вы можете:
-      // 1. Отправить customType как новое значение type_id
-      // 2. Или создать новый тип через отдельный API-вызов
-      
-      // Вариант 1: Если бэкенд принимает название нового типа
-      // finalTypeId = customType;
-      
-      // Вариант 2: Если нужно сначала создать тип (раскомментируйте если есть API)
-      // try {
-      //   const newType = await createType({ name: customType }, token);
-      //   finalTypeId = newType.id;
-      // } catch (err) {
-      //   setError("Не удалось создать новый тип мебели");
-      //   return;
-      // }
-      
-      // Временное решение: пока используем customType как строку
-      finalTypeId = customType;
-    }
-
-    // Проверка обязательных полей
-    if ((!formData.type_id && selectedType !== "Другой") || 
-        (selectedType === "Другой" && !customType) ||
-        !formData.building_id || 
-        !formData.room_id) {
+    // 🔧 ДОБАВЛЕНА ЗАЩИТА ОТ ПУСТЫХ ПОЛЕЙ
+    if (!formData.type_id || !formData.building_id || !formData.room_id) {
       setError("Выберите все обязательные поля (тип, этаж, комната)");
       return;
     }
@@ -431,9 +379,10 @@ function FurnitureCreate() {
       setError("");
       setFieldErrors({});
 
+      // 🔧 ИСПРАВЛЕННЫЙ submitData с защитой от null
       const submitData = {
         name: String(formData.name || "").trim(),
-        type_id: selectedType === "Другой" ? customType : (formData.type_id ? Number(formData.type_id) : null),
+        type_id: formData.type_id ? Number(formData.type_id) : null,
         building_id: formData.building_id ? Number(formData.building_id) : null,
         room_id: formData.room_id ? Number(formData.room_id) : null,
         condition_id: formData.condition_id ? Number(formData.condition_id) : null,
@@ -654,12 +603,12 @@ function FurnitureCreate() {
             {renderFieldError("name")}
           </div>
 
-          {/* ── ТИП (с опцией "Другой") ── */}
+          {/* ── ТИП ── */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">Тип</label>
             <select
-              name="type_select"
-              value={selectedType}
+              name="type_id"
+              value={formData.type_id}
               onChange={handleChange}
               className={getFieldClass("type_id")}
             >
@@ -669,23 +618,7 @@ function FurnitureCreate() {
                   {type.name}
                 </option>
               ))}
-              <option value="Другой" className="bg-slate-900">➕ Другой</option>
             </select>
-            
-            {/* Поле для ввода кастомного типа */}
-            {selectedType === "Другой" && (
-              <input
-                type="text"
-                placeholder="Введите тип мебели"
-                value={customType}
-                onChange={(e) => {
-                  setCustomType(e.target.value);
-                  clearFieldError("type_id");
-                }}
-                className={`mt-3 ${getFieldClass("custom_type")}`}
-              />
-            )}
-            
             {renderFieldError("type_id")}
           </div>
 
