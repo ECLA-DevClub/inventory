@@ -37,6 +37,56 @@
 
 ---
 
+## Local development
+
+### Backend (FastAPI)
+
+1. Create a virtual environment and install dependencies:
+
+```bash
+cd backend
+python -m venv venv
+venv\\Scripts\\activate
+pip install -r requirements.txt
+```
+
+2. Configure environment variables (minimum):
+
+- `SECRET_KEY`: JWT signing secret (required)
+- `DATABASE_URL`: optional. If not set, the backend uses `backend/inventory.db` (SQLite)
+
+If you want to run without setting `SECRET_KEY` locally, you can set:
+
+- `INVENTORY_ALLOW_INSECURE_DEV_SECRET=1`
+
+3. Run the API:
+
+```bash
+python main.py
+```
+
+API docs will be available at `/docs` (default: `http://127.0.0.1:8000/docs`).
+
+### Frontend (Vite)
+
+```bash
+cd frontend
+npm install
+```
+
+Set API URL (optional). By default the frontend uses `VITE_API_URL` from `.env.production` or falls back to the hosted API:
+
+```bash
+# create frontend/.env.local
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+Run dev server:
+
+```bash
+npm run dev
+```
+
 ## Database Structure
 
 ### furniture
