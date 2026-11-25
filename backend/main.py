@@ -238,18 +238,22 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-frontend_public_url = os.getenv("FRONTEND_PUBLIC_URL")
-
+# Базовые источники: локальная разработка + текущие продакшен-домены.
+# Дополнительные домены добавляются через переменную CORS_ORIGINS
+# (список через запятую) — при смене хостинга код править не нужно.
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://ecla-devclub.github.io",
     "https://ecla-devclub.github.io/inventory",
-    "https://inventorycom-git-main-sidikovoa11l044-2899s-projects.vercel.app",
 ]
 
-if frontend_public_url and frontend_public_url not in allowed_origins:
-    allowed_origins.append(frontend_public_url)
+for env_name in ("FRONTEND_PUBLIC_URL", "CORS_ORIGINS"):
+    raw_value = os.getenv(env_name, "")
+    for origin in raw_value.split(","):
+        origin = origin.strip().rstrip("/")
+        if origin and origin not in allowed_origins:
+            allowed_origins.append(origin)
 
 app.add_middleware(
     CORSMiddleware,

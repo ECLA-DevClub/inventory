@@ -1,5 +1,8 @@
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://inventory-9ko1.onrender.com";
+// Адрес бэкенда задаётся через VITE_API_URL (.env для разработки,
+// .env.production для сборки). Фолбэк намеренно локальный: если переменная
+// не подхватилась при сборке, это должно быть сразу заметно,
+// а не уводить запросы на старый хостинг.
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 /* ---------------- HELPERS ---------------- */
 

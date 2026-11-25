@@ -32,4 +32,6 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway (как и большинство PaaS) передаёт порт в переменной PORT.
+# Shell-форма CMD нужна, чтобы ${PORT} подставился; локально по умолчанию 8000.
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -2,13 +2,8 @@ import io
 import os
 from datetime import date, timedelta
 from typing import List, Optional
-from urllib.parse import quote, unquote
-from uuid import uuid4
 
-import boto3
 import qrcode
-from botocore.config import Config
-from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
@@ -16,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 import models
 import schemas
+import storage
 from auth import require_roles
 from database import get_db
 
@@ -38,124 +34,6 @@ public_router = APIRouter(
 
 
 # =========================
-# S3 / B2 CONFIG
-# =========================
-
-def get_s3_client():
-    bucket_name = os.getenv("S3_BUCKET_NAME")
-    access_key = os.getenv("S3_ACCESS_KEY_ID")
-    secret_key = os.getenv("S3_SECRET_ACCESS_KEY")
-
-    if not bucket_name or not access_key or not secret_key:
-        raise HTTPException(
-            status_code=500,
-            detail="S3 storage не настроен: отсутствуют S3_BUCKET_NAME / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY"
-        )
-
-    region = os.getenv("S3_REGION", "auto")
-    endpoint_url = os.getenv("S3_ENDPOINT_URL")
-
-    return boto3.client(
-        "s3",
-        region_name=region,
-        endpoint_url=endpoint_url,
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        config=Config(signature_version="s3v4", s3={"addressing_style": "auto"}),
-    )
-
-
-def get_s3_bucket_name() -> str:
-    bucket_name = os.getenv("S3_BUCKET_NAME")
-    if not bucket_name:
-        raise HTTPException(status_code=500, detail="S3_BUCKET_NAME не задан")
-    return bucket_name
-
-
-def get_s3_key_prefix() -> str:
-    return os.getenv("S3_KEY_PREFIX", "item_photos").strip("/")
-
-
-def normalize_extension(filename: Optional[str]) -> str:
-    if not filename or "." not in filename:
-        return "bin"
-
-    ext = filename.rsplit(".", 1)[-1].lower().strip()
-    if not ext:
-        return "bin"
-
-    allowed = {
-        "jpg", "jpeg", "png", "webp", "gif",
-        "bmp", "heic", "heif"
-    }
-    return ext if ext in allowed else "bin"
-
-
-def build_s3_object_key(filename: Optional[str]) -> str:
-    ext = normalize_extension(filename)
-    prefix = get_s3_key_prefix()
-    return f"{prefix}/{uuid4().hex}.{ext}"
-
-
-def build_public_photo_url(object_key: str) -> str:
-    """Формирует URL для доступа к фото через прокси (без авторизации)"""
-    backend_url = os.getenv(
-        "BACKEND_PUBLIC_URL",
-        "http://localhost:8000"
-    ).rstrip("/")
-    
-    return f"{backend_url}/furniture/photo-proxy/{quote(object_key, safe='/')}"
-
-
-def extract_s3_key_from_photo_url(photo_url: Optional[str]) -> Optional[str]:
-    if not photo_url:
-        return None
-
-    if "/photo-proxy/" in photo_url:
-        return unquote(photo_url.split("/photo-proxy/")[1])
-
-    public_base = os.getenv("S3_PUBLIC_BASE_URL", "").rstrip("/")
-    if public_base and photo_url.startswith(public_base):
-        return unquote(photo_url.replace(public_base + "/", "", 1))
-
-    return None
-
-
-def upload_file_to_s3(file: UploadFile) -> str:
-    s3 = get_s3_client()
-    bucket_name = get_s3_bucket_name()
-    object_key = build_s3_object_key(file.filename)
-
-    extra_args = {}
-    if file.content_type:
-        extra_args["ContentType"] = file.content_type
-
-    try:
-        file.file.seek(0)
-        if extra_args:
-            s3.upload_fileobj(file.file, bucket_name, object_key, ExtraArgs=extra_args)
-        else:
-            s3.upload_fileobj(file.file, bucket_name, object_key)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка загрузки файла в S3: {str(e)}")
-
-    return build_public_photo_url(object_key)
-
-
-def delete_file_from_s3_by_photo_url(photo_url: Optional[str]) -> None:
-    object_key = extract_s3_key_from_photo_url(photo_url)
-    if not object_key:
-        return
-
-    try:
-        s3 = get_s3_client()
-        bucket_name = get_s3_bucket_name()
-        s3.delete_object(Bucket=bucket_name, Key=object_key)
-    except Exception:
-        pass
-
-
-# =========================
 # HELPERS
 # =========================
 
@@ -164,7 +42,7 @@ def furniture_to_response(item: models.Furniture):
     # преобразуем его в полный URL через прокси
     photo_url = item.photo_url
     if photo_url and not photo_url.startswith("http"):
-        photo_url = build_public_photo_url(photo_url)
+        photo_url = storage.build_public_photo_url(photo_url)
     
     return {
         "id": item.id,
@@ -227,24 +105,30 @@ def add_history_record(
 
 @public_router.get("/photo-proxy/{object_key:path}")
 def get_photo_via_proxy(object_key: str):
-    s3 = get_s3_client()
-    bucket_name = get_s3_bucket_name()
+    """
+    Отдаёт фото без авторизации (QR-код может открыть кто угодно).
 
-    try:
-        response = s3.get_object(Bucket=bucket_name, Key=object_key)
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code")
-        if error_code in {"NoSuchKey", "404"}:
-            raise HTTPException(status_code=404, detail="Фото не найдено")
-        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Ошибка чтения файла из S3")
+    Если bucket в Supabase публичный, фронтенд ходит за фото напрямую в CDN,
+    и этот эндпоинт нужен только для старых ссылок из S3 / Backblaze B2.
+    """
+    object_key = object_key.strip().lstrip("/")
 
-    content_type = response.get("ContentType") or "application/octet-stream"
-    body = response["Body"]
+    # Ключ должен лежать внутри разрешённого префикса, иначе через этот
+    # публичный эндпоинт можно было бы вычитать любой объект хранилища.
+    allowed_prefixes = {
+        storage.get_key_prefix(),
+        os.getenv("S3_KEY_PREFIX", "item_photos").strip("/"),
+    }
+
+    if ".." in object_key or not any(
+        object_key.startswith(f"{prefix}/") for prefix in allowed_prefixes if prefix
+    ):
+        raise HTTPException(status_code=404, detail="Фото не найдено")
+
+    stream, content_type = storage.open_photo_stream(object_key)
 
     return StreamingResponse(
-        body,
+        stream,
         media_type=content_type,
         headers={
             "Cache-Control": "public, max-age=86400"
@@ -393,7 +277,7 @@ async def create_furniture(
     # Обработка фото - загружаем один раз для всех предметов
     photo_url = None
     if photo:
-        photo_url = upload_file_to_s3(photo)
+        photo_url = storage.upload_photo(photo)
     
     created_items = []
     
@@ -533,7 +417,7 @@ def delete_furniture(
     db.delete(item)
     db.commit()
 
-    delete_file_from_s3_by_photo_url(old_photo_url)
+    storage.delete_photo(old_photo_url)
 
     return {"detail": "Мебель удалена"}
 
@@ -558,13 +442,13 @@ def upload_furniture_photo(
         raise HTTPException(status_code=400, detail="Файл не выбран")
 
     old_photo_url = item.photo_url
-    new_photo_url = upload_file_to_s3(photo)
+    new_photo_url = storage.upload_photo(photo)
 
     item.photo_url = new_photo_url
     db.commit()
     db.refresh(item)
 
-    delete_file_from_s3_by_photo_url(old_photo_url)
+    storage.delete_photo(old_photo_url)
 
     add_history_record(
         db=db,
