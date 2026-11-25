@@ -209,6 +209,7 @@ class FurnitureResponse(BaseModel):
     id: int
     inv_number: Optional[str] = None
     name: str
+    code: Optional[str] = None  # 👈 ДОБАВЛЕНО поле code
     type_id: Optional[int] = None
     type_name: Optional[str] = None
     building_id: Optional[int] = None

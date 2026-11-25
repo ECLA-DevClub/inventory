@@ -69,7 +69,7 @@ function MainLayout() {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#020817] text-white">
+    <div className="relative min-h-screen bg-[#020817] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 left-[-60px] h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute right-[-80px] top-1/3 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl" />
@@ -201,7 +201,7 @@ function MainLayout() {
           </>
         )}
 
-        <aside className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:justify-between lg:p-4 lg:w-[280px] xl:w-[320px]">
+        <aside className="hidden lg:flex lg:flex-col lg:justify-between lg:p-4 lg:w-[280px] xl:w-[320px] sticky top-0 h-screen">
           <div className="glass-strong flex h-full flex-col justify-between rounded-[30px] border border-white/10 p-4 xl:p-6">
             <div>
               <div className="mb-6 flex items-start justify-between gap-3">

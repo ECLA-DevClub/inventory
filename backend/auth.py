@@ -15,7 +15,17 @@ from roles import Role
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-dev-key-change-me")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    # Avoid accidentally deploying with a hardcoded secret.
+    # For local development you can set INVENTORY_ALLOW_INSECURE_DEV_SECRET=1.
+    if os.getenv("INVENTORY_ALLOW_INSECURE_DEV_SECRET") == "1":
+        SECRET_KEY = "dev-insecure-secret"
+    else:
+        raise RuntimeError(
+            "SECRET_KEY is not set. Set SECRET_KEY in environment "
+            "(or set INVENTORY_ALLOW_INSECURE_DEV_SECRET=1 for local development)."
+        )
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 

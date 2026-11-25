@@ -68,6 +68,7 @@ class Furniture(Base):
     __tablename__ = "furniture"
 
     id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True, nullable=True)
     inv_number = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=False)
     qr = Column(String, unique=True, index=True, nullable=True)

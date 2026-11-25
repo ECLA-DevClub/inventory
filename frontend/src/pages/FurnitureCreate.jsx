@@ -226,10 +226,16 @@ function FurnitureCreate() {
     }
 
     if (name === "quantity") {
+      if (value === "") {
+        setFormData((prev) => ({ ...prev, quantity: "" }));
+        return;
+      }
+
       const qty = parseInt(value, 10);
+
       setFormData((prev) => ({
         ...prev,
-        quantity: isNaN(qty) || qty < 1 ? 1 : qty > 500 ? 500 : qty,
+        quantity: isNaN(qty) ? "" : Math.min(Math.max(qty, 1), 500),
       }));
       return;
     }
@@ -559,12 +565,23 @@ function FurnitureCreate() {
                   name="quantity"
                   min="1"
                   max="500"
-                  value={formData.quantity}
+                  value={formData.quantity || ""}
+                  placeholder="1"
+                  onFocus={(e) => {
+                    if (formData.quantity === 1) {
+                      setFormData((prev) => ({ ...prev, quantity: "" }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value) {
+                      setFormData((prev) => ({ ...prev, quantity: 1 }));
+                    }
+                  }}
                   onChange={handleChange}
                   className="w-40 rounded-[20px] border border-blue-400/30 bg-white/[0.08] px-5 py-3 text-center text-xl font-bold text-white outline-none transition focus:border-blue-400/50 focus:bg-white/12 focus:ring-2 focus:ring-blue-400/20"
                 />
                 <div className="text-sm text-white/60">
-                  {formData.quantity === 1
+                  {formData.quantity === 1 || formData.quantity === ""
                     ? "Будет создана 1 запись"
                     : `Будет создано ${formData.quantity} записей`}
                 </div>

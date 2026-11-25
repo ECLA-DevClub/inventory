@@ -9,7 +9,6 @@ cffi==2.0.0
 click==8.3.1
 colorama==0.4.6
 cryptography==46.0.5
-Django==6.0.2
 dnspython==2.8.0
 ecdsa==0.19.1
 email-validator==2.3.0
